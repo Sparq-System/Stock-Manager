@@ -1,0 +1,196 @@
+{
+  "users": [
+    {
+      "_id": "507f1f77bcf86cd799439011",
+      "firstName": "John",
+      "lastName": "Doe",
+      "email": "rv@demo.com",
+      "password": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
+      "phone": "+1234567890",
+      "role": "admin",
+      "dateOfJoining": "2023-01-15T00:00:00.000Z",
+      "createdAt": "2023-01-15T10:30:00.000Z",
+      "updatedAt": "2023-01-15T10:30:00.000Z"
+    },
+    {
+      "_id": "507f1f77bcf86cd799439012",
+      "firstName": "Adi",
+      "lastName": "Mishra",
+      "email": "adi@demo.com",
+      "password": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
+      "phone": "+1234567891",
+      "role": "client",
+      "dateOfJoining": "2023-02-20T00:00:00.000Z",
+      "createdAt": "2023-02-20T09:15:00.000Z",
+      "updatedAt": "2023-02-20T09:15:00.000Z"
+    },
+    {
+      "_id": "507f1f77bcf86cd799439013",
+      "firstName": "Michael",
+      "lastName": "Johnson",
+      "email": "michael.johnson@example.com",
+      "password": "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f",
+      "phone": "+1234567892",
+      "role": "client",
+      "dateOfJoining": "2023-03-10T00:00:00.000Z",
+      "createdAt": "2023-03-10T14:20:00.000Z",
+      "updatedAt": "2023-03-10T14:20:00.000Z"
+    },
+    {
+      "_id": "507f1f77bcf86cd799439014",
+      "firstName": "Sarah",
+      "lastName": "Williams",
+      "email": "sarah.williams@example.com",
+      "password": "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f",
+      "phone": "+1234567893",
+      "role": "client",
+      "dateOfJoining": "2023-04-05T00:00:00.000Z",
+      "createdAt": "2023-04-05T11:45:00.000Z",
+      "updatedAt": "2023-04-05T11:45:00.000Z"
+    },
+    {
+      "_id": "507f1f77bcf86cd799439015",
+      "firstName": "David",
+      "lastName": "Brown",
+      "email": "david.brown@example.com",
+      "password": "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f",
+      "phone": "+1234567894",
+      "role": "client",
+      "dateOfJoining": "2023-05-12T00:00:00.000Z",
+      "createdAt": "2023-05-12T16:30:00.000Z",
+      "updatedAt": "2023-05-12T16:30:00.000Z"
+    }
+  ],
+  "trades": [
+    {
+      "_id": "507f1f77bcf86cd799439021",
+      "userId": "507f1f77bcf86cd799439012",
+      "stockName": "Apple Inc. (AAPL)",
+      "purchaseRate": 150.25,
+      "purchaseDate": "2023-03-01T00:00:00.000Z",
+      "unitsPurchased": 100,
+      "sellingPrice": 175.50,
+      "sellingDate": "2023-06-15T00:00:00.000Z",
+      "unitsSold": 50,
+      "status": "partial",
+      "createdAt": "2023-03-01T10:00:00.000Z",
+      "updatedAt": "2023-06-15T14:30:00.000Z"
+    },
+    {
+      "_id": "507f1f77bcf86cd799439022",
+      "userId": "507f1f77bcf86cd799439012",
+      "stockName": "Microsoft Corporation (MSFT)",
+      "purchaseRate": 280.75,
+      "purchaseDate": "2023-03-15T00:00:00.000Z",
+      "unitsPurchased": 75,
+      "sellingPrice": null,
+      "sellingDate": null,
+      "unitsSold": 0,
+      "status": "active",
+      "createdAt": "2023-03-15T11:20:00.000Z",
+      "updatedAt": "2023-03-15T11:20:00.000Z"
+    },
+    {
+      "_id": "507f1f77bcf86cd799439023",
+      "userId": "507f1f77bcf86cd799439013",
+      "stockName": "Tesla, Inc. (TSLA)",
+      "purchaseRate": 220.30,
+      "purchaseDate": "2023-04-01T00:00:00.000Z",
+      "unitsPurchased": 50,
+      "sellingPrice": 195.80,
+      "sellingDate": "2023-07-20T00:00:00.000Z",
+      "unitsSold": 50,
+      "status": "sold",
+      "createdAt": "2023-04-01T09:45:00.000Z",
+      "updatedAt": "2023-07-20T15:10:00.000Z"
+    },
+    {
+      "_id": "507f1f77bcf86cd799439024",
+      "userId": "507f1f77bcf86cd799439013",
+      "stockName": "Amazon.com, Inc. (AMZN)",
+      "purchaseRate": 3200.45,
+      "purchaseDate": "2023-04-10T00:00:00.000Z",
+      "unitsPurchased": 10,
+      "sellingPrice": null,
+      "sellingDate": null,
+      "unitsSold": 0,
+      "status": "active",
+      "createdAt": "2023-04-10T13:25:00.000Z",
+      "updatedAt": "2023-04-10T13:25:00.000Z"
+    },
+    {
+      "_id": "507f1f77bcf86cd799439025",
+      "userId": "507f1f77bcf86cd799439014",
+      "stockName": "Alphabet Inc. (GOOGL)",
+      "purchaseRate": 2650.80,
+      "purchaseDate": "2023-05-01T00:00:00.000Z",
+      "unitsPurchased": 20,
+      "sellingPrice": null,
+      "sellingDate": null,
+      "unitsSold": 0,
+      "status": "active",
+      "createdAt": "2023-05-01T10:15:00.000Z",
+      "updatedAt": "2023-05-01T10:15:00.000Z"
+    },
+    {
+      "_id": "507f1f77bcf86cd799439026",
+      "userId": "507f1f77bcf86cd799439014",
+      "stockName": "Meta Platforms, Inc. (META)",
+      "purchaseRate": 185.60,
+      "purchaseDate": "2023-05-15T00:00:00.000Z",
+      "unitsPurchased": 80,
+      "sellingPrice": 220.40,
+      "sellingDate": "2023-08-10T00:00:00.000Z",
+      "unitsSold": 30,
+      "status": "partial",
+      "createdAt": "2023-05-15T14:40:00.000Z",
+      "updatedAt": "2023-08-10T11:20:00.000Z"
+    },
+    {
+      "_id": "507f1f77bcf86cd799439027",
+      "userId": "507f1f77bcf86cd799439015",
+      "stockName": "NVIDIA Corporation (NVDA)",
+      "purchaseRate": 420.75,
+      "purchaseDate": "2023-06-01T00:00:00.000Z",
+      "unitsPurchased": 25,
+      "sellingPrice": null,
+      "sellingDate": null,
+      "unitsSold": 0,
+      "status": "active",
+      "createdAt": "2023-06-01T12:30:00.000Z",
+      "updatedAt": "2023-06-01T12:30:00.000Z"
+    },
+    {
+      "_id": "507f1f77bcf86cd799439028",
+      "userId": "507f1f77bcf86cd799439015",
+      "stockName": "Netflix, Inc. (NFLX)",
+      "purchaseRate": 380.90,
+      "purchaseDate": "2023-06-15T00:00:00.000Z",
+      "unitsPurchased": 15,
+      "sellingPrice": 425.30,
+      "sellingDate": "2023-09-05T00:00:00.000Z",
+      "unitsSold": 15,
+      "status": "sold",
+      "createdAt": "2023-06-15T16:45:00.000Z",
+      "updatedAt": "2023-09-05T10:25:00.000Z"
+    }
+  ],
+  "navs": [
+    {
+      "_id": "507f1f77bcf86cd799439031",
+      "date": "2023-01-01T00:00:00.000Z",
+      "value": 10000.00,
+      "updatedBy": "507f1f77bcf86cd799439011",
+      "createdAt": "2023-01-01T09:00:00.000Z",
+      "updatedAt": "2023-01-01T09:00:00.000Z"
+    },
+    {
+      "_id": "507f1f77bcf86cd799439031",
+      "date": "2023-01-01T00:00:00.000Z",
+      "value": 11000.00,
+      "updatedBy": "507f1f77bcf86cd799439011",
+      "createdAt": "2023-01-01T09:00:00.000Z",
+      "updatedAt": "2023-01-01T09:00:00.000Z"
+    }    
+  ]
+}
