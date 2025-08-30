@@ -106,7 +106,9 @@ export default function AdminDashboard() {
   const pageStyle = {
     minHeight: '100vh',
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
-    position: 'relative',
+    position: 'fixed',
+    width: '100%',
+    height: '100vh',
     overflow: 'hidden'
   }
 
@@ -161,7 +163,7 @@ export default function AdminDashboard() {
   })
 
   return (
-    <div style={pageStyle}>
+    <div style={{ ...pageStyle, position: 'fixed', width: '100%', height: '100vh' }}>
       {/* Animated background elements */}
       <div 
         className="position-absolute"
@@ -203,13 +205,26 @@ export default function AdminDashboard() {
         }}
       ></div>
       
-      <Navbar user={user} />
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000 }}>
+        <Navbar user={user} />
+      </div>
       <div className="d-flex">
-        <Sidebar 
-          isCollapsed={isSidebarCollapsed} 
-          onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-        />
-        <div className="flex-grow-1">
+        <div style={{ position: 'fixed', left: 0, top: '60px', bottom: 0, zIndex: 999 }}>
+          <Sidebar 
+            isCollapsed={isSidebarCollapsed} 
+            onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          />
+        </div>
+        <div 
+          className="flex-grow-1" 
+          style={{
+            marginLeft: isSidebarCollapsed ? '80px' : '250px',
+            marginTop: '60px',
+            height: 'calc(100vh - 60px)',
+            overflowY: 'auto',
+            transition: 'margin-left 0.3s ease'
+          }}
+        >
           <Container fluid className="py-4" style={containerStyle}>
             <Row>
               <Col>

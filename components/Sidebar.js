@@ -12,6 +12,8 @@ export default function Sidebar({ isCollapsed = false, onToggle }) {
     { path: '/admin-dashboard', label: 'Dashboard', icon: 'bi-speedometer2', gradient: '#667eea' },
     { path: '/admin-dashboard/users', label: 'Users', icon: 'bi-people', gradient: '#f093fb' },
     { path: '/admin-dashboard/trades', label: 'Trades', icon: 'bi-graph-up', gradient: '#4facfe' },
+    { path: '/admin-dashboard/investments', label: 'Investments', icon: 'bi-wallet2', gradient: '#ffecd2' },
+    { path: '/admin-dashboard/transactions', label: 'Transactions', icon: 'bi-receipt', gradient: '#ff9a9e' },
     { path: '/admin-dashboard/nav', label: 'NAV', icon: 'bi-currency-rupee', gradient: '#43e97b' }
   ]
 

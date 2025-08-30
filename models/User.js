@@ -42,7 +42,16 @@ const UserSchema = new mongoose.Schema({
     unique: true,
     trim: true,
     length: 6
+  },
+  investedAmount: {
+    type: Number,
+    default: 0
+  },
+  units: {
+    type: Number,
+    default: 0
   }
+  // currentValue is now calculated dynamically as units * NAV
 }, {
   timestamps: true
 })

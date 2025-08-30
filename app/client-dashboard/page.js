@@ -138,7 +138,8 @@ export default function ClientDashboard() {
       if (trade.status === 'sold') {
         return sum + (trade.sellingPrice * trade.unitsSold)
       }
-      return sum + (trade.purchaseRate * trade.unitsPurchased * 1.1) // Mock current value
+      // Calculate current value dynamically using current NAV
+      return sum + (trade.unitsPurchased * (summaryData.nav || trade.purchaseRate))
     }, 0)
 
     setSummaryData(prev => ({

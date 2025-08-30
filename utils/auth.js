@@ -13,9 +13,25 @@ export function verifyToken(token) {
 }
 
 export function getTokenFromRequest(req) {
+  // Check Authorization header first
   const authHeader = req.headers.get('authorization')
   if (authHeader && authHeader.startsWith('Bearer ')) {
     return authHeader.substring(7)
   }
+  
+  // Check cookies as fallback
+  const cookieHeader = req.headers.get('cookie')
+  if (cookieHeader) {
+    const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
+      const [key, value] = cookie.trim().split('=')
+      acc[key] = value
+      return acc
+    }, {})
+    
+    if (cookies.token) {
+      return cookies.token
+    }
+  }
+  
   return null
 }
