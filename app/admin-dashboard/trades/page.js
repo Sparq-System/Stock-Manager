@@ -8,7 +8,6 @@ import Sidebar from '../../../components/Sidebar'
 export default function TradesManagement() {
   const [trades, setTrades] = useState([])
   const [user, setUser] = useState(null)
-  const [users, setUsers] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [editingTrade, setEditingTrade] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -17,8 +16,9 @@ export default function TradesManagement() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [tradeToDelete, setTradeToDelete] = useState(null)
+  const [showViewModal, setShowViewModal] = useState(false)
+  const [viewingTrade, setViewingTrade] = useState(null)
   const [formData, setFormData] = useState({
-    userId: '',
     stockName: '',
     purchaseRate: '',
     purchaseDate: '',
@@ -31,7 +31,6 @@ export default function TradesManagement() {
   useEffect(() => {
     fetchUserData()
     fetchTrades()
-    fetchUsers()
   }, [])
 
   const fetchUserData = async () => {
@@ -46,23 +45,7 @@ export default function TradesManagement() {
     }
   }
 
-  const fetchUsers = async () => {
-    try {
-      const token = localStorage.getItem('token')
-      const response = await fetch('/api/users?all=true', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        setUsers(data.users || [])
-      }
-    } catch (error) {
-      console.error('Failed to fetch users:', error)
-    }
-  }
+
 
   const fetchTrades = async () => {
     try {
@@ -139,7 +122,6 @@ export default function TradesManagement() {
         setShowModal(false)
         setEditingTrade(null)
         setFormData({
-          userId: '',
           stockName: '',
           purchaseRate: '',
           purchaseDate: '',
@@ -161,7 +143,6 @@ export default function TradesManagement() {
   const handleEdit = (trade) => {
     setEditingTrade(trade)
     setFormData({
-      userId: trade.userId?._id || '',
       stockName: trade.stockName,
       purchaseRate: trade.purchaseRate.toString(),
       purchaseDate: new Date(trade.purchaseDate).toISOString().split('T')[0],
@@ -282,7 +263,7 @@ export default function TradesManagement() {
   }
 
   return (
-    <div style={pageStyle}>
+    <div style={{ ...pageStyle, position: 'fixed', width: '100%', height: '100vh' }}>
       {/* Animated Background Elements */}
       <div 
         style={{
@@ -309,15 +290,26 @@ export default function TradesManagement() {
         }}
       />
       
-      <Navbar user={user} />
-      <div className="d-flex" style={{ minHeight: 'calc(100vh - 76px)' }}>
-        <div style={{ flexShrink: 0 }}>
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000 }}>
+        <Navbar user={user} />
+      </div>
+      <div className="d-flex" style={{ height: '100vh', paddingTop: '76px' }}>
+        <div style={{ flexShrink: 0, position: 'fixed', left: 0, top: '76px', bottom: 0, zIndex: 999 }}>
           <Sidebar 
             isCollapsed={isSidebarCollapsed} 
             onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
           />
         </div>
-        <div className="flex-grow-1" style={{ minWidth: 0, overflow: 'auto' }}>
+        <div 
+          className="flex-grow-1" 
+          style={{ 
+            minWidth: 0, 
+            overflow: 'auto',
+            height: 'calc(100vh - 76px)',
+            marginLeft: isSidebarCollapsed ? '80px' : '280px',
+            transition: 'margin-left 0.3s ease'
+          }}
+        >
           <Container fluid style={containerStyle}>
             <Row>
               <Col>
@@ -359,7 +351,6 @@ export default function TradesManagement() {
                     onClick={() => {
                       setEditingTrade(null)
                       setFormData({
-                        userId: '',
                         stockName: '',
                         purchaseRate: '',
                         purchaseDate: '',
@@ -483,25 +474,74 @@ export default function TradesManagement() {
                       </div>
                     </div>
                     <div className="table-responsive" style={{ borderRadius: '16px', overflow: 'hidden' }}>
-                      <Table hover style={{ margin: '0', background: 'white', fontSize: '12px', tableLayout: 'fixed', width: '100%' }}>
-                        <thead 
-                          style={{
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                            color: 'white'
-                          }}
-                        >
-                          <tr>
-                            <th style={{ border: 'none', padding: '12px 8px', fontWeight: '600', fontSize: '11px', width: '8%' }}>Date</th>
-                            <th style={{ border: 'none', padding: '12px 8px', fontWeight: '600', fontSize: '11px', width: '12%' }}>User</th>
-                            <th style={{ border: 'none', padding: '12px 8px', fontWeight: '600', fontSize: '11px', width: '10%' }}>Stock Name</th>
-                            <th style={{ border: 'none', padding: '12px 8px', fontWeight: '600', fontSize: '11px', width: '7%' }}>Units</th>
-                            <th style={{ border: 'none', padding: '12px 8px', fontWeight: '600', fontSize: '11px', width: '9%' }}>Purchase Rate</th>
-                            <th style={{ border: 'none', padding: '12px 8px', fontWeight: '600', fontSize: '11px', width: '10%' }}>Total Amount</th>
-                            <th style={{ border: 'none', padding: '12px 8px', fontWeight: '600', fontSize: '11px', width: '8%' }}>Selling Date</th>
-                            <th style={{ border: 'none', padding: '12px 8px', fontWeight: '600', fontSize: '11px', width: '9%' }}>Selling Price</th>
-                            <th style={{ border: 'none', padding: '12px 8px', fontWeight: '600', fontSize: '11px', width: '7%' }}>Units Sold</th>
-                            <th style={{ border: 'none', padding: '12px 8px', fontWeight: '600', fontSize: '11px', width: '8%' }}>Return</th>
-                            <th style={{ border: 'none', padding: '12px 8px', fontWeight: '600', fontSize: '11px', width: '12%' }}>Actions</th>
+                      <Table hover style={{ margin: '0', background: 'white', fontSize: '14px', tableLayout: 'fixed', width: '100%' }}>
+                        <thead>
+                          <tr style={{ background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)' }}>
+                            <th style={{ 
+                              border: 'none', 
+                              padding: '16px 20px', 
+                              fontWeight: '600', 
+                              fontSize: '13px', 
+                              color: '#495057', 
+                              width: '18%',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.5px',
+                              borderRight: '1px solid #dee2e6'
+                            }}>Stock Name</th>
+                            <th style={{ 
+                              border: 'none', 
+                              padding: '16px 20px', 
+                              fontWeight: '600', 
+                              fontSize: '13px', 
+                              color: '#495057', 
+                              width: '15%',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.5px',
+                              borderRight: '1px solid #dee2e6'
+                            }}>Purchase Date</th>
+                            <th style={{ 
+                              border: 'none', 
+                              padding: '16px 20px', 
+                              fontWeight: '600', 
+                              fontSize: '13px', 
+                              color: '#495057', 
+                              width: '16%',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.5px',
+                              borderRight: '1px solid #dee2e6'
+                            }}>Total Investment</th>
+                            <th style={{ 
+                              border: 'none', 
+                              padding: '16px 20px', 
+                              fontWeight: '600', 
+                              fontSize: '13px', 
+                              color: '#495057', 
+                              width: '18%',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.5px',
+                              borderRight: '1px solid #dee2e6'
+                            }}>Profit</th>
+                            <th style={{ 
+                              border: 'none', 
+                              padding: '16px 20px', 
+                              fontWeight: '600', 
+                              fontSize: '13px', 
+                              color: '#495057', 
+                              width: '12%',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.5px',
+                              borderRight: '1px solid #dee2e6'
+                            }}>Status</th>
+                            <th style={{ 
+                              border: 'none', 
+                              padding: '16px 20px', 
+                              fontWeight: '600', 
+                              fontSize: '13px', 
+                              color: '#495057', 
+                              width: '21%',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.5px'
+                            }}>Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -510,17 +550,31 @@ export default function TradesManagement() {
                           ).length === 0 ? (
                             <tr>
                               <td 
-                                colSpan="11" 
+                                colSpan="6" 
                                 style={{
                                   textAlign: 'center',
                                   padding: '40px 20px',
                                   color: '#6c757d',
-                                  fontSize: '16px',
+                                  fontSize: '14px',
                                   border: 'none'
                                 }}
                               >
-                                <i className="bi bi-inbox fs-1 d-block mb-3" style={{ color: '#dee2e6' }}></i>
-                                {searchTerm ? `No trades found for "${searchTerm}"` : 'No trades found'}
+                                <div style={{ 
+                                  display: 'flex', 
+                                  flexDirection: 'column', 
+                                  alignItems: 'center',
+                                  gap: '12px'
+                                }}>
+                                  <i className="bi bi-inbox" style={{ fontSize: '2rem', color: '#6c757d' }}></i>
+                                  <div>
+                                    <h6 style={{ color: '#495057', marginBottom: '4px', fontWeight: '500' }}>
+                                      {searchTerm ? 'No matching trades found' : 'No trades available'}
+                                    </h6>
+                                    <p style={{ color: '#6c757d', margin: '0', fontSize: '13px' }}>
+                                      {searchTerm ? `No trades found for "${searchTerm}"` : 'Start by adding your first trade'}
+                                    </p>
+                                  </div>
+                                </div>
                               </td>
                             </tr>
                           ) : (
@@ -547,126 +601,214 @@ export default function TradesManagement() {
                               <tr 
                                 key={trade._id}
                                 style={{
-                                  borderBottom: index === trades.filter(t => t.stockName.toLowerCase().includes(searchTerm.toLowerCase())).length - 1 ? 'none' : '1px solid rgba(0,0,0,0.05)',
+                                  background: index % 2 === 0 
+                                    ? 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)' 
+                                    : 'linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)',
+                                  borderBottom: '1px solid #e9ecef',
                                   transition: 'all 0.3s ease'
                                 }}
                                 onMouseEnter={(e) => {
-                                  e.currentTarget.style.backgroundColor = 'rgba(102, 126, 234, 0.05)'
-                                  e.currentTarget.style.transform = 'scale(1.01)'
+                                  e.currentTarget.style.background = 'linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%)';
+                                  e.currentTarget.style.transform = 'translateY(-1px)';
+                                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
                                 }}
                                 onMouseLeave={(e) => {
-                                  e.currentTarget.style.backgroundColor = 'transparent'
-                                  e.currentTarget.style.transform = 'scale(1)'
+                                  e.currentTarget.style.background = index % 2 === 0 
+                                    ? 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)' 
+                                    : 'linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)';
+                                  e.currentTarget.style.transform = 'translateY(0)';
+                                  e.currentTarget.style.boxShadow = 'none';
                                 }}
                               >
-                                <td style={{ border: 'none', padding: '12px 8px', fontWeight: '500', color: '#2c3e50', fontSize: '11px' }}>
-                                  {format(new Date(trade.purchaseDate), 'dd MMM yy')}
+                                <td style={{ 
+                                  border: 'none', 
+                                  padding: '18px 20px', 
+                                  fontWeight: '600', 
+                                  color: '#2c3e50', 
+                                  fontSize: '14px',
+                                  borderRight: '1px solid #f1f3f4'
+                                }}>
+                                  {trade.stockName}
                                 </td>
-                                <td style={{ border: 'none', padding: '12px 8px' }}>
-                                  {trade.userId ? (
-                                    <div>
-                                      <div style={{ fontWeight: '500', color: '#2c3e50', fontSize: '11px', lineHeight: '1.2' }}>
-                                        {trade.userId.firstName} {trade.userId.lastName}
-                                      </div>
-                                      <small style={{ color: '#6c757d', fontSize: '10px', lineHeight: '1.2' }}>
-                                        {trade.userId.email.length > 15 ? trade.userId.email.substring(0, 15) + '...' : trade.userId.email}
-                                      </small>
-                                    </div>
-                                  ) : (
-                                    <span style={{ color: '#dc3545', fontWeight: '500', fontSize: '11px' }}>User not found</span>
-                                  )}
+                                <td style={{ 
+                                  border: 'none', 
+                                  padding: '18px 20px', 
+                                  fontWeight: '500', 
+                                  color: '#6c757d', 
+                                  fontSize: '13px',
+                                  borderRight: '1px solid #f1f3f4'
+                                }}>
+                                  {format(new Date(trade.purchaseDate), 'MMM dd, yyyy')}
                                 </td>
-                                <td style={{ border: 'none', padding: '12px 8px', fontWeight: '500', color: '#2c3e50', fontSize: '11px' }}>
-                                  {trade.stockName.length > 8 ? trade.stockName.substring(0, 8) + '...' : trade.stockName}
-                                </td>
-                                <td style={{ border: 'none', padding: '12px 8px', fontWeight: '500', color: '#2c3e50', fontSize: '11px' }}>
-                                  {trade.unitsPurchased}
-                                </td>
-                                <td style={{ border: 'none', padding: '12px 8px', fontWeight: '500', color: '#2c3e50', fontSize: '11px' }}>
-                                  ₹{trade.purchaseRate.toFixed(1)}
-                                </td>
-                                <td style={{ border: 'none', padding: '12px 8px', fontWeight: '600', color: '#2c3e50', fontSize: '11px' }}>
+                                <td style={{ 
+                                  border: 'none', 
+                                  padding: '18px 20px', 
+                                  fontWeight: '600', 
+                                  color: '#2c3e50', 
+                                  fontSize: '14px',
+                                  borderRight: '1px solid #f1f3f4'
+                                }}>
                                   ₹{(trade.unitsPurchased * trade.purchaseRate).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                                 </td>
-                                <td style={{ border: 'none', padding: '12px 8px', color: '#6c757d', fontSize: '11px' }}>
-                                  {trade.sellingDate ? format(new Date(trade.sellingDate), 'dd MMM yy') : '-'}
-                                </td>
-                                <td style={{ border: 'none', padding: '12px 8px', color: '#6c757d', fontSize: '11px' }}>
-                                  {trade.sellingPrice ? `₹${trade.sellingPrice.toFixed(1)}` : '-'}
-                                </td>
-                                <td style={{ border: 'none', padding: '12px 8px', color: '#6c757d', fontSize: '11px' }}>
-                                  {trade.unitsSold ? trade.unitsSold : '-'}
-                                </td>
-                                <td style={{ border: 'none', padding: '12px 8px' }}>
-                                  {returnData.isProfit === null ? (
-                                    <span style={{ color: '#6c757d', fontSize: '10px' }}>-</span>
-                                  ) : (
-                                    <span 
-                                      style={{
-                                        color: returnData.isProfit ? '#28a745' : '#dc3545',
+                                <td style={{ 
+                                  border: 'none', 
+                                  padding: '18px 20px',
+                                  borderRight: '1px solid #f1f3f4'
+                                }}>
+                                  {trade.sellingDate && trade.unitsSold ? (
+                                    <div>
+                                      <div style={{
+                                        fontSize: '14px',
                                         fontWeight: '600',
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        fontSize: '10px'
-                                      }}
-                                    >
-                                      ₹{Math.abs(returnData.amount).toFixed(0)}
-                                      <i className={`bi ${returnData.isProfit ? 'bi-arrow-up' : 'bi-arrow-down'} ms-1`}></i>
-                                    </span>
+                                        color: returnData.isProfit ? '#28a745' : '#dc3545',
+                                        marginBottom: '2px'
+                                      }}>
+                                        {returnData.isProfit ? '+' : ''}₹{Math.abs(returnData.amount).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                                      </div>
+                                      <div style={{
+                                        fontSize: '12px',
+                                        color: returnData.isProfit ? '#28a745' : '#dc3545',
+                                        fontWeight: '500'
+                                      }}>
+                                        ({returnData.isProfit ? '+' : ''}{((returnData.amount / (trade.unitsSold * trade.purchaseRate)) * 100).toFixed(2)}%)
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div style={{
+                                      fontSize: '13px',
+                                      color: '#6c757d',
+                                      fontStyle: 'italic'
+                                    }}>
+                                      Active Trade
+                                    </div>
                                   )}
                                 </td>
-                                <td style={{ border: 'none', padding: '12px 8px' }}>
-                                  <div className="d-flex gap-1">
-                                    <Button 
+                                <td style={{ 
+                                   border: 'none', 
+                                   padding: '18px 20px',
+                                   textAlign: 'center',
+                                   borderRight: '1px solid #f1f3f4'
+                                 }}>
+                                   {trade.sellingDate && trade.unitsSold ? (
+                                     <span style={{
+                                       padding: '6px 12px',
+                                       background: returnData.isProfit ? '#d4edda' : '#f8d7da',
+                                       borderRadius: '20px',
+                                       display: 'inline-block',
+                                       color: returnData.isProfit ? '#155724' : '#721c24',
+                                       fontWeight: '600',
+                                       fontSize: '12px',
+                                       textTransform: 'uppercase',
+                                       letterSpacing: '0.5px',
+                                       border: `1px solid ${returnData.isProfit ? '#c3e6cb' : '#f5c6cb'}`
+                                     }}>
+                                       {returnData.isProfit ? 'Profit' : 'Loss'}
+                                     </span>
+                                   ) : (
+                                     <span style={{
+                                       padding: '6px 12px',
+                                       background: '#fff3cd',
+                                       borderRadius: '20px',
+                                       display: 'inline-block',
+                                       color: '#856404',
+                                       fontSize: '12px',
+                                       fontWeight: '600',
+                                       textTransform: 'uppercase',
+                                       letterSpacing: '0.5px',
+                                       border: '1px solid #ffeaa7'
+                                     }}>
+                                       Active
+                                     </span>
+                                   )}
+                                 </td>
+                                 <td style={{ 
+                                   border: 'none', 
+                                   padding: '18px 20px'
+                                 }}>
+                                  <div className="d-flex gap-2 justify-content-center">
+                                     <Button 
+                                        style={{
+                                          background: 'linear-gradient(135deg, #6c757d 0%, #5a6268 100%)',
+                                          border: 'none',
+                                          borderRadius: '8px',
+                                          padding: '10px 12px',
+                                          fontSize: '14px',
+                                          transition: 'all 0.3s ease',
+                                          color: 'white',
+                                          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                        }}
+                                        size="sm"
+                                        onClick={() => {
+                                          setViewingTrade(trade)
+                                          setShowViewModal(true)
+                                        }}
+                                        onMouseEnter={(e) => {
+                                          e.target.style.background = 'linear-gradient(135deg, #5a6268 0%, #495057 100%)'
+                                          e.target.style.transform = 'translateY(-1px)'
+                                          e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          e.target.style.background = 'linear-gradient(135deg, #6c757d 0%, #5a6268 100%)'
+                                          e.target.style.transform = 'translateY(0)'
+                                          e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'
+                                        }}
+                                      >
+                                        <i className="bi bi-eye"></i>
+                                      </Button>
+                                     <Button 
+                                        style={{
+                                          background: 'linear-gradient(135deg, #007bff 0%, #0056b3 100%)',
+                                          border: 'none',
+                                          borderRadius: '8px',
+                                          padding: '10px 12px',
+                                          fontSize: '14px',
+                                          transition: 'all 0.3s ease',
+                                          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                        }}
+                                        size="sm"
+                                        onClick={() => handleEdit(trade)}
+                                        disabled={trade.unitsSold && trade.unitsSold === trade.unitsPurchased}
+                                        onMouseEnter={(e) => {
+                                          if (!e.target.disabled) {
+                                            e.target.style.background = 'linear-gradient(135deg, #0056b3 0%, #004085 100%)'
+                                            e.target.style.transform = 'translateY(-1px)'
+                                            e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'
+                                          }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          e.target.style.background = 'linear-gradient(135deg, #007bff 0%, #0056b3 100%)'
+                                          e.target.style.transform = 'translateY(0)'
+                                          e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'
+                                        }}
+                                      >
+                                        <i className="bi bi-pencil-square"></i>
+                                      </Button>
+                                     <Button 
                                        style={{
-                                         background: '#4facfe',
+                                         background: 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)',
                                          border: 'none',
-                                         borderRadius: '6px',
-                                         padding: '4px 8px',
-                                         fontSize: '10px',
-                                         fontWeight: '600',
-                                         transition: 'all 0.3s ease'
+                                         borderRadius: '8px',
+                                         padding: '10px 12px',
+                                         fontSize: '14px',
+                                         transition: 'all 0.3s ease',
+                                         boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                                        }}
                                        size="sm"
-                                       onClick={() => handleEdit(trade)}
-                                       disabled={trade.unitsSold && trade.unitsSold === trade.unitsPurchased}
+                                       onClick={() => confirmDelete(trade)}
                                        onMouseEnter={(e) => {
-                                         if (!e.target.disabled) {
-                                           e.target.style.transform = 'translateY(-1px)'
-                                           e.target.style.boxShadow = '0 4px 12px rgba(79, 172, 254, 0.4)'
-                                         }
+                                         e.target.style.background = 'linear-gradient(135deg, #c82333 0%, #a71e2a 100%)'
+                                         e.target.style.transform = 'translateY(-1px)'
+                                         e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'
                                        }}
                                        onMouseLeave={(e) => {
+                                         e.target.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)'
                                          e.target.style.transform = 'translateY(0)'
-                                         e.target.style.boxShadow = 'none'
+                                         e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'
                                        }}
                                      >
-                                       <i className="bi bi-pencil"></i>
+                                       <i className="bi bi-trash3"></i>
                                      </Button>
-                                    <Button 
-                                      style={{
-                                        background: '#ff6b6b',
-                                        border: 'none',
-                                        borderRadius: '6px',
-                                        padding: '4px 8px',
-                                        fontSize: '10px',
-                                        fontWeight: '600',
-                                        transition: 'all 0.3s ease'
-                                      }}
-                                      size="sm"
-                                      onClick={() => confirmDelete(trade)}
-                                      onMouseEnter={(e) => {
-                                        e.target.style.transform = 'translateY(-1px)'
-                                        e.target.style.boxShadow = '0 4px 12px rgba(255, 107, 107, 0.4)'
-                                      }}
-                                      onMouseLeave={(e) => {
-                                        e.target.style.transform = 'translateY(0)'
-                                        e.target.style.boxShadow = 'none'
-                                      }}
-                                    >
-                                      <i className="bi bi-trash"></i>
-                                    </Button>
-                                  </div>
+                                   </div>
                                 </td>
                               </tr>
                               );
@@ -683,6 +825,301 @@ export default function TradesManagement() {
         </div>
       </div>
 
+      {/* View Trade Details Modal */}
+      <Modal 
+        show={showViewModal} 
+        onHide={() => setShowViewModal(false)} 
+        size="lg"
+        centered
+        backdrop="static"
+      >
+        <Modal.Header 
+          closeButton 
+          style={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '15px 15px 0 0'
+          }}
+        >
+          <Modal.Title style={{ fontSize: '24px', fontWeight: '700' }}>
+            <i className="bi bi-graph-up-arrow me-3"></i>
+            Trade Details
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body 
+          style={{
+            background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+            padding: '30px',
+            borderRadius: '0 0 15px 15px'
+          }}
+        >
+          {viewingTrade && (
+            <div className="row g-4">
+              {/* Stock Information */}
+              <div className="col-12">
+                <div 
+                  style={{
+                    background: 'white',
+                    borderRadius: '15px',
+                    padding: '25px',
+                    boxShadow: '0 8px 25px rgba(0,0,0,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)'
+                  }}
+                >
+                  <h5 style={{ 
+                    color: '#2c3e50', 
+                    marginBottom: '20px', 
+                    fontWeight: '700',
+                    borderBottom: '2px solid #667eea',
+                    paddingBottom: '10px'
+                  }}>
+                    <i className="bi bi-building me-2"></i>
+                    Stock Information
+                  </h5>
+                  <div className="row">
+                    <div className="col-md-6">
+                      <div style={{ marginBottom: '15px' }}>
+                        <strong style={{ color: '#34495e', fontSize: '14px' }}>Stock Name:</strong>
+                        <div style={{ 
+                          fontSize: '18px', 
+                          fontWeight: '600', 
+                          color: '#667eea',
+                          marginTop: '5px'
+                        }}>
+                          {viewingTrade.stockName}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="col-md-6">
+                      <div style={{ marginBottom: '15px' }}>
+                        <strong style={{ color: '#34495e', fontSize: '14px' }}>Status:</strong>
+                        <div style={{ marginTop: '5px' }}>
+                          <span style={{
+                            padding: '6px 12px',
+                            borderRadius: '20px',
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            background: viewingTrade.unitsSold && viewingTrade.unitsSold === viewingTrade.unitsPurchased 
+                              ? 'linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)' 
+                              : 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                            color: 'white'
+                          }}>
+                            {viewingTrade.unitsSold && viewingTrade.unitsSold === viewingTrade.unitsPurchased ? 'Sold' : 'Active'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Purchase Details */}
+              <div className="col-md-6">
+                <div 
+                  style={{
+                    background: 'white',
+                    borderRadius: '15px',
+                    padding: '25px',
+                    boxShadow: '0 8px 25px rgba(0,0,0,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    height: '100%'
+                  }}
+                >
+                  <h5 style={{ 
+                    color: '#2c3e50', 
+                    marginBottom: '20px', 
+                    fontWeight: '700',
+                    borderBottom: '2px solid #4facfe',
+                    paddingBottom: '10px'
+                  }}>
+                    <i className="bi bi-cart-plus me-2"></i>
+                    Purchase Details
+                  </h5>
+                  <div style={{ marginBottom: '15px' }}>
+                    <strong style={{ color: '#34495e', fontSize: '14px' }}>Purchase Date:</strong>
+                    <div style={{ 
+                      fontSize: '16px', 
+                      fontWeight: '600', 
+                      color: '#4facfe',
+                      marginTop: '5px'
+                    }}>
+                      {new Date(viewingTrade.purchaseDate).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <div style={{ marginBottom: '15px' }}>
+                    <strong style={{ color: '#34495e', fontSize: '14px' }}>Units Purchased:</strong>
+                    <div style={{ 
+                      fontSize: '16px', 
+                      fontWeight: '600', 
+                      color: '#4facfe',
+                      marginTop: '5px'
+                    }}>
+                      {viewingTrade.unitsPurchased}
+                    </div>
+                  </div>
+                  <div style={{ marginBottom: '15px' }}>
+                    <strong style={{ color: '#34495e', fontSize: '14px' }}>Purchase Rate:</strong>
+                    <div style={{ 
+                      fontSize: '16px', 
+                      fontWeight: '600', 
+                      color: '#4facfe',
+                      marginTop: '5px'
+                    }}>
+                      ₹{viewingTrade.purchaseRate}
+                    </div>
+                  </div>
+                  <div style={{ marginBottom: '0' }}>
+                    <strong style={{ color: '#34495e', fontSize: '14px' }}>Total Investment:</strong>
+                    <div style={{ 
+                      fontSize: '18px', 
+                      fontWeight: '700', 
+                      color: '#4facfe',
+                      marginTop: '5px',
+                      padding: '10px',
+                      background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
+                      borderRadius: '8px'
+                    }}>
+                      ₹{(viewingTrade.unitsPurchased * viewingTrade.purchaseRate).toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Selling Details */}
+              <div className="col-md-6">
+                <div 
+                  style={{
+                    background: 'white',
+                    borderRadius: '15px',
+                    padding: '25px',
+                    boxShadow: '0 8px 25px rgba(0,0,0,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    height: '100%'
+                  }}
+                >
+                  <h5 style={{ 
+                    color: '#2c3e50', 
+                    marginBottom: '20px', 
+                    fontWeight: '700',
+                    borderBottom: '2px solid #ff6b6b',
+                    paddingBottom: '10px'
+                  }}>
+                    <i className="bi bi-cart-dash me-2"></i>
+                    Selling Details
+                  </h5>
+                  {viewingTrade.sellingDate ? (
+                    <>
+                      <div style={{ marginBottom: '15px' }}>
+                        <strong style={{ color: '#34495e', fontSize: '14px' }}>Selling Date:</strong>
+                        <div style={{ 
+                          fontSize: '16px', 
+                          fontWeight: '600', 
+                          color: '#ff6b6b',
+                          marginTop: '5px'
+                        }}>
+                          {new Date(viewingTrade.sellingDate).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <div style={{ marginBottom: '15px' }}>
+                        <strong style={{ color: '#34495e', fontSize: '14px' }}>Units Sold:</strong>
+                        <div style={{ 
+                          fontSize: '16px', 
+                          fontWeight: '600', 
+                          color: '#ff6b6b',
+                          marginTop: '5px'
+                        }}>
+                          {viewingTrade.unitsSold || 0}
+                        </div>
+                      </div>
+                      <div style={{ marginBottom: '15px' }}>
+                        <strong style={{ color: '#34495e', fontSize: '14px' }}>Selling Price:</strong>
+                        <div style={{ 
+                          fontSize: '16px', 
+                          fontWeight: '600', 
+                          color: '#ff6b6b',
+                          marginTop: '5px'
+                        }}>
+                          ₹{viewingTrade.sellingPrice || 0}
+                        </div>
+                      </div>
+                      <div style={{ marginBottom: '0' }}>
+                        <strong style={{ color: '#34495e', fontSize: '14px' }}>Return:</strong>
+                        <div style={{ 
+                          fontSize: '18px', 
+                          fontWeight: '700', 
+                          color: (() => {
+                            if (!viewingTrade.sellingPrice || !viewingTrade.unitsSold) return '#6c757d';
+                            const purchaseCost = viewingTrade.unitsSold * viewingTrade.purchaseRate;
+                            const sellingAmount = viewingTrade.unitsSold * viewingTrade.sellingPrice;
+                            const returnAmount = sellingAmount - purchaseCost;
+                            return returnAmount >= 0 ? '#27ae60' : '#e74c3c';
+                          })(),
+                          marginTop: '5px',
+                          padding: '10px',
+                          background: (() => {
+                            if (!viewingTrade.sellingPrice || !viewingTrade.unitsSold) return 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)';
+                            const purchaseCost = viewingTrade.unitsSold * viewingTrade.purchaseRate;
+                            const sellingAmount = viewingTrade.unitsSold * viewingTrade.sellingPrice;
+                            const returnAmount = sellingAmount - purchaseCost;
+                            return returnAmount >= 0 
+                              ? 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%)' 
+                              : 'linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%)';
+                          })(),
+                          borderRadius: '8px'
+                        }}>
+                          {(() => {
+                            if (!viewingTrade.sellingPrice || !viewingTrade.unitsSold) return '₹0.00';
+                            const purchaseCost = viewingTrade.unitsSold * viewingTrade.purchaseRate;
+                            const sellingAmount = viewingTrade.unitsSold * viewingTrade.sellingPrice;
+                            const returnAmount = sellingAmount - purchaseCost;
+                            return (returnAmount >= 0 ? '+' : '') + '₹' + returnAmount.toFixed(2);
+                          })()} 
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ 
+                      textAlign: 'center', 
+                      color: '#7f8c8d', 
+                      fontSize: '16px',
+                      fontStyle: 'italic',
+                      padding: '40px 20px'
+                    }}>
+                      <i className="bi bi-hourglass-split" style={{ fontSize: '24px', marginBottom: '10px', display: 'block' }}></i>
+                      Not sold yet
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer 
+          style={{
+            background: 'white',
+            border: 'none',
+            borderRadius: '0 0 15px 15px',
+            padding: '20px 30px'
+          }}
+        >
+          <Button 
+            variant="secondary" 
+            onClick={() => setShowViewModal(false)}
+            style={{
+              background: 'linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%)',
+              border: 'none',
+              borderRadius: '10px',
+              padding: '10px 20px',
+              fontWeight: '600',
+              transition: 'all 0.3s ease'
+            }}
+          >
+            Close
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
       {/* Add Trade Modal */}
       <Modal show={showModal} onHide={() => setShowModal(false)} size="lg">
         <Modal.Header closeButton>
@@ -691,23 +1128,7 @@ export default function TradesManagement() {
         <Modal.Body>
           <Form onSubmit={handleSubmit}>
             <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>User *</Form.Label>
-                  <Form.Select
-                    value={formData.userId}
-                    onChange={(e) => setFormData({...formData, userId: e.target.value})}
-                    required
-                  >
-                    <option value="">Select User</option>
-                    {users.map(user => (
-                      <option key={user._id} value={user._id}>
-                        {user.firstName} {user.lastName} ({user.email})
-                      </option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
-              </Col>
+
               <Col md={6}>
                 <Form.Group className="mb-3">
                   <Form.Label>Stock Name *</Form.Label>

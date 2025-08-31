@@ -261,7 +261,7 @@ export default function Login() {
                     Demo Credentials
                   </h6>
                   <small className="text-muted d-block mb-1">
-                    <strong>Admin:</strong> rv@demo.com / 123456
+                    <strong>Admin:</strong> tiwari@demo.com / 123456
                   </small>
                   <small className="text-muted d-block">
                     <strong>Client:</strong> adi@demo.com / 123456

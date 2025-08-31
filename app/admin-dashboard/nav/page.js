@@ -64,113 +64,120 @@ export default function NAVPage() {
 
   const pageStyle = {
     minHeight: '100vh',
-    background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%)',
-    position: 'relative'
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    position: 'relative',
+    overflow: 'hidden'
   }
 
   const containerStyle = {
-    flexGrow: 1,
-    position: 'relative',
-    zIndex: 2,
-    padding: '2rem'
+    background: 'rgba(255, 255, 255, 0.95)',
+    backdropFilter: 'blur(20px)',
+    borderRadius: '24px',
+    margin: '20px',
+    padding: '32px',
+    boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
+    border: '1px solid rgba(255,255,255,0.2)'
   }
 
   const headerStyle = {
-    background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-    border: 'none',
-    borderRadius: '24px',
-    padding: '2rem',
-    marginBottom: '2rem',
-    boxShadow: '0 20px 40px rgba(59, 130, 246, 0.15), 0 8px 16px rgba(0, 0, 0, 0.1)',
-    position: 'relative',
-    overflow: 'hidden'
+    background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
+    backdropFilter: 'blur(20px)',
+    borderRadius: '16px',
+    padding: '24px 32px',
+    marginBottom: '32px',
+    border: '1px solid rgba(102, 126, 234, 0.2)'
   }
 
 
 
   return (
-    <div style={pageStyle}>
-      <Navbar user={user} />
-      <div className="d-flex" style={{ minHeight: '100vh' }}>
-        <div style={{ flexShrink: 0 }}>
+    <div style={{ ...pageStyle, position: 'fixed', width: '100%', height: '100vh' }}>
+      {/* Animated Background Elements */}
+      <div 
+        style={{
+          position: 'absolute',
+          top: '10%',
+          left: '10%',
+          width: '300px',
+          height: '300px',
+          background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)',
+          borderRadius: '50%',
+          animation: 'float 6s ease-in-out infinite'
+        }}
+      />
+      <div 
+        style={{
+          position: 'absolute',
+          top: '60%',
+          right: '15%',
+          width: '200px',
+          height: '200px',
+          background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%)',
+          borderRadius: '50%',
+          animation: 'float 8s ease-in-out infinite reverse'
+        }}
+      />
+      
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000 }}>
+        <Navbar user={user} />
+      </div>
+      <div className="d-flex" style={{ height: '100vh', paddingTop: '76px' }}>
+        <div style={{ flexShrink: 0, position: 'fixed', left: 0, top: '76px', bottom: 0, zIndex: 999 }}>
           <Sidebar 
             isCollapsed={isSidebarCollapsed} 
             onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
           />
         </div>
-        <div className="flex-grow-1" style={{ minWidth: 0, overflow: 'auto' }}>
-          <Container fluid className="py-4" style={containerStyle}>
+        <div 
+          className="flex-grow-1" 
+          style={{ 
+            minWidth: 0, 
+            overflow: 'auto',
+            height: 'calc(100vh - 76px)',
+            marginLeft: isSidebarCollapsed ? '80px' : '280px',
+            transition: 'margin-left 0.3s ease'
+          }}
+        >
+          <Container fluid style={containerStyle}>
             <Row>
               <Col>
                 <div style={headerStyle}>
-                  {/* Decorative background elements */}
-                  <div 
-                    style={{
-                      position: 'absolute',
-                      top: '-50px',
-                      right: '-50px',
-                      width: '200px',
-                      height: '200px',
-                      background: 'rgba(255, 255, 255, 0.1)',
-                      borderRadius: '50%',
-                      filter: 'blur(40px)'
-                    }}
-                  ></div>
-                  <div 
-                    style={{
-                      position: 'absolute',
-                      bottom: '-30px',
-                      left: '-30px',
-                      width: '150px',
-                      height: '150px',
-                      background: 'rgba(255, 255, 255, 0.08)',
-                      borderRadius: '50%',
-                      filter: 'blur(30px)'
-                    }}
-                  ></div>
-                  
-                  <div className="d-flex align-items-center mb-0" style={{ position: 'relative', zIndex: 2 }}>
+                <div className="d-flex justify-content-between align-items-center">
+                  <div className="d-flex align-items-center">
                     <div 
+                      className="rounded-3 p-3 me-3"
                       style={{
-                        background: 'rgba(255, 255, 255, 0.2)',
-                        backdropFilter: 'blur(10px)',
-                        borderRadius: '20px',
-                        padding: '16px',
-                        marginRight: '20px',
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        width: '60px',
+                        height: '60px',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        border: '1px solid rgba(255, 255, 255, 0.3)'
+                        justifyContent: 'center'
                       }}
                     >
-                      <i className="bi bi-graph-up" style={{ fontSize: '28px', color: 'white' }}></i>
+                      <i className="bi bi-graph-up text-white fs-3"></i>
                     </div>
                     <div>
                       <h1 
                         style={{
-                          margin: 0,
-                          fontSize: '32px',
-                          fontWeight: '800',
-                          color: 'white',
-                          textShadow: '0 2px 8px rgba(0,0,0,0.2)',
-                          letterSpacing: '-0.5px'
+                          fontSize: '2rem',
+                          fontWeight: '700',
+                          color: '#2c3e50',
+                          margin: '0',
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent'
                         }}
                       >
                         NAV Management
                       </h1>
-                      <p 
-                        style={{
-                          margin: '8px 0 0 0',
-                          fontSize: '16px',
-                          color: 'rgba(255, 255, 255, 0.8)',
-                          fontWeight: '400'
-                        }}
-                      >
+                      <p style={{ color: '#6c757d', margin: '0', fontSize: '1rem' }}>
                         Monitor and update Net Asset Values
                       </p>
                     </div>
                   </div>
                 </div>
+              </div>
                 <NAVManager />
               </Col>
             </Row>

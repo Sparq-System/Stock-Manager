@@ -19,6 +19,7 @@ export default function UsersManagement() {
     lastName: '',
     email: '',
     password: '',
+    confirmPassword: '',
     phone: '',
     role: 'client'
   })
@@ -33,6 +34,8 @@ export default function UsersManagement() {
     userId: null,
     userName: ''
   })
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   useEffect(() => {
     fetchUserData()
@@ -150,6 +153,12 @@ export default function UsersManagement() {
         setError('Please use a different email address')
         return
       }
+      
+      // Check if passwords match for new users
+      if (formData.password !== formData.confirmPassword) {
+        setError('Passwords do not match')
+        return
+      }
     }
 
     try {
@@ -178,6 +187,7 @@ export default function UsersManagement() {
           lastName: '',
           email: '',
           password: '',
+          confirmPassword: '',
           phone: '',
           role: 'client'
         })
@@ -187,6 +197,8 @@ export default function UsersManagement() {
           message: '',
           hasBlurred: false
         })
+        setShowPassword(false)
+        setShowConfirmPassword(false)
         fetchUsers()
       } else {
         const data = await response.json()
@@ -246,7 +258,6 @@ export default function UsersManagement() {
   const getRoleBadgeVariant = (role) => {
     switch (role) {
       case 'admin': return 'danger'
-      case 'manager': return 'warning'
       case 'client': return 'primary'
       default: return 'secondary'
     }
@@ -315,14 +326,26 @@ export default function UsersManagement() {
   }
 
   return (
-    <div style={pageStyle}>
-      <Navbar user={user} />
-      <div className="d-flex">
-        <Sidebar 
-          isCollapsed={isSidebarCollapsed} 
-          onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-        />
-        <div className="flex-grow-1">
+    <div style={{ ...pageStyle, position: 'fixed', width: '100%', height: '100vh' }}>
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000 }}>
+        <Navbar user={user} />
+      </div>
+      <div className="d-flex" style={{ height: '100vh', paddingTop: '76px' }}>
+        <div style={{ flexShrink: 0, position: 'fixed', left: 0, top: '76px', bottom: 0, zIndex: 999 }}>
+          <Sidebar 
+            isCollapsed={isSidebarCollapsed} 
+            onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          />
+        </div>
+        <div 
+          className="flex-grow-1" 
+          style={{ 
+            overflow: 'auto',
+            height: 'calc(100vh - 76px)',
+            marginLeft: isSidebarCollapsed ? '80px' : '280px',
+            transition: 'margin-left 0.3s ease'
+          }}
+        >
           <Container fluid className="py-4" style={containerStyle}>
             <Row>
               <Col>
@@ -405,7 +428,7 @@ export default function UsersManagement() {
                       </div>
                       <Form.Control
                         type="text"
-                        placeholder="🔍 Search by name, email, or phone..."
+                        placeholder="🔍 Search by name, email, phone, or user ID..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         style={{
@@ -440,11 +463,13 @@ export default function UsersManagement() {
                               const fullName = `${user.firstName} ${user.lastName}`.toLowerCase()
                               const email = user.email.toLowerCase()
                               const phone = (user.phone || '').toLowerCase()
+                              const userCode = (user.userCode || '').toLowerCase()
                               const search = searchTerm.toLowerCase()
                               
                               return fullName.includes(search) || 
                                      email.includes(search) || 
-                                     phone.includes(search)
+                                     phone.includes(search) ||
+                                     userCode.includes(search)
                             })
                             
                             if (filteredUsers.length === 0) {
@@ -716,31 +741,104 @@ export default function UsersManagement() {
                 )}
               </Form.Group>
 
-              <Form.Group className="mb-4">
-                <Form.Label 
-                  style={{
-                    fontWeight: '600',
-                    color: '#2c3e50',
-                    marginBottom: '8px'
-                  }}
-                >
-                  Password {editingUser && <span style={{ color: '#6c757d', fontSize: '12px' }}>(leave blank to keep current)</span>}
-                </Form.Label>
-                <Form.Control
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  placeholder="Enter password"
-                  required={!editingUser}
-                  style={{
-                    borderRadius: '12px',
-                    border: '2px solid rgba(102, 126, 234, 0.2)',
-                    padding: '12px 16px',
-                    fontSize: '14px',
-                    transition: 'all 0.3s ease'
-                  }}
-                />
-              </Form.Group>
+              <Row>
+                <Col md={6}>
+                  <Form.Group className="mb-4">
+                    <Form.Label 
+                      style={{
+                        fontWeight: '600',
+                        color: '#2c3e50',
+                        marginBottom: '8px'
+                      }}
+                    >
+                      Password {editingUser && <span style={{ color: '#6c757d', fontSize: '12px' }}>(leave blank to keep current)</span>}
+                    </Form.Label>
+                    <div style={{ position: 'relative' }}>
+                       <Form.Control
+                         type={showPassword ? "text" : "password"}
+                         value={formData.password}
+                         onChange={(e) => setFormData({...formData, password: e.target.value})}
+                         placeholder="Enter password"
+                         required={!editingUser}
+                         style={{
+                           borderRadius: '12px',
+                           border: '2px solid rgba(102, 126, 234, 0.2)',
+                           padding: '12px 40px 12px 16px',
+                           fontSize: '14px',
+                           transition: 'all 0.3s ease'
+                         }}
+                       />
+                       <i 
+                         className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`}
+                         onClick={() => setShowPassword(!showPassword)}
+                         style={{
+                           position: 'absolute',
+                           right: '12px',
+                           top: '50%',
+                           transform: 'translateY(-50%)',
+                           cursor: 'pointer',
+                           color: '#6c757d',
+                           fontSize: '16px',
+                           transition: 'color 0.2s ease'
+                         }}
+                         onMouseEnter={(e) => e.target.style.color = '#495057'}
+                         onMouseLeave={(e) => e.target.style.color = '#6c757d'}
+                       />
+                     </div>
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-4">
+                    <Form.Label 
+                      style={{
+                        fontWeight: '600',
+                        color: '#2c3e50',
+                        marginBottom: '8px'
+                      }}
+                    >
+                      Confirm Password {editingUser && <span style={{ color: '#6c757d', fontSize: '12px' }}>(leave blank to keep current)</span>}
+                    </Form.Label>
+                    <div style={{ position: 'relative' }}>
+                       <Form.Control
+                         type={showConfirmPassword ? "text" : "password"}
+                         value={formData.confirmPassword}
+                         onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+                         placeholder="Confirm password"
+                         required={!editingUser}
+                         isInvalid={formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword}
+                         style={{
+                           borderRadius: '12px',
+                           border: '2px solid rgba(102, 126, 234, 0.2)',
+                           padding: '12px 40px 12px 16px',
+                           fontSize: '14px',
+                           transition: 'all 0.3s ease'
+                         }}
+                       />
+                       <i 
+                         className={`bi ${showConfirmPassword ? 'bi-eye-slash' : 'bi-eye'}`}
+                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                         style={{
+                           position: 'absolute',
+                           right: '12px',
+                           top: '50%',
+                           transform: 'translateY(-50%)',
+                           cursor: 'pointer',
+                           color: '#6c757d',
+                           fontSize: '16px',
+                           transition: 'color 0.2s ease'
+                         }}
+                         onMouseEnter={(e) => e.target.style.color = '#495057'}
+                         onMouseLeave={(e) => e.target.style.color = '#6c757d'}
+                       />
+                     </div>
+                    {formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword && (
+                      <Form.Control.Feedback type="invalid">
+                        Passwords do not match
+                      </Form.Control.Feedback>
+                    )}
+                  </Form.Group>
+                </Col>
+              </Row>
 
               <Row>
                 <Col md={6}>
@@ -793,7 +891,6 @@ export default function UsersManagement() {
                       }}
                     >
                       <option value="client">👤 Client</option>
-                      <option value="manager">👨‍💼 Manager</option>
                       <option value="admin">👑 Admin</option>
                     </Form.Select>
                   </Form.Group>
@@ -805,7 +902,18 @@ export default function UsersManagement() {
                   variant="secondary" 
                   onClick={() => {
                     setShowModal(false)
-                    setEmailValidation({ isValidating: false, isAvailable: null, message: '', hasBlurred: false })
+                    setFormData({
+                       firstName: '',
+                       lastName: '',
+                       email: '',
+                       password: '',
+                       confirmPassword: '',
+                       phone: '',
+                       role: 'client'
+                     })
+                     setEmailValidation({ isValidating: false, isAvailable: null, message: '', hasBlurred: false })
+                     setShowPassword(false)
+                     setShowConfirmPassword(false)
                   }}
                   style={{
                     borderRadius: '12px',
@@ -822,9 +930,9 @@ export default function UsersManagement() {
                 </Button>
                 <Button 
                   type="submit"
-                  disabled={!editingUser && (emailValidation.isValidating || (emailValidation.hasBlurred && emailValidation.isAvailable === false))}
+                  disabled={!editingUser && (emailValidation.isValidating || (emailValidation.hasBlurred && emailValidation.isAvailable === false) || (formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword))}
                   style={{
-                    background: (!editingUser && (emailValidation.isValidating || (emailValidation.hasBlurred && emailValidation.isAvailable === false))) ? '#6c757d' : '#667eea',
+                    background: (!editingUser && (emailValidation.isValidating || (emailValidation.hasBlurred && emailValidation.isAvailable === false) || (formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword))) ? '#6c757d' : '#667eea',
                     border: 'none',
                     borderRadius: '12px',
                     padding: '12px 24px',
