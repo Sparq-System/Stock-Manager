@@ -255,7 +255,7 @@ const InvestmentManagement = () => {
   return (
     <div style={{ ...pageStyle, position: 'fixed', width: '100%', height: '100vh' }}>
       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000 }}>
-        <Navbar user={currentUser} />
+        <Navbar user={currentUser} isAdmin={true} />
       </div>
       <div className="d-flex" style={{ height: '100vh', paddingTop: '76px' }}>
         <div style={{ flexShrink: 0, position: 'fixed', left: 0, top: '76px', bottom: 0, zIndex: 999 }}>

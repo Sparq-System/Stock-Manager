@@ -33,7 +33,9 @@ export default function UsersManagement() {
   const [deleteConfirmation, setDeleteConfirmation] = useState({
     show: false,
     userId: null,
-    userName: ''
+    userName: '',
+    hasUnitsError: false,
+    units: 0
   })
   const [showPassword, setShowPassword] = useState(false)
   const [viewUser, setViewUser] = useState(null)
@@ -244,10 +246,19 @@ export default function UsersManagement() {
       })
 
       if (response.ok) {
-        setDeleteConfirmation({ show: false, userId: null, userName: '' })
+        setDeleteConfirmation({ show: false, userId: null, userName: '', hasUnitsError: false, units: 0 })
         fetchUsers()
       } else {
-        setError('Failed to delete user')
+        const data = await response.json()
+        if (data.hasUnits) {
+          setDeleteConfirmation(prev => ({
+            ...prev,
+            hasUnitsError: true,
+            units: data.units
+          }))
+        } else {
+          setError(data.message || 'Failed to delete user')
+        }
       }
     } catch (error) {
       setError('Failed to delete user')
@@ -277,7 +288,7 @@ export default function UsersManagement() {
   }
 
   const handleDeleteCancel = () => {
-    setDeleteConfirmation({ show: false, userId: null, userName: '' })
+    setDeleteConfirmation({ show: false, userId: null, userName: '', hasUnitsError: false, units: 0 })
   }
 
   const getRoleBadgeVariant = (role) => {
@@ -353,7 +364,7 @@ export default function UsersManagement() {
   return (
     <div style={{ ...pageStyle, position: 'fixed', width: '100%', height: '100vh' }}>
       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000 }}>
-        <Navbar user={user} />
+        <Navbar user={user} isAdmin={true} />
       </div>
       <div className="d-flex" style={{ height: '100vh', paddingTop: '76px' }}>
         <div style={{ flexShrink: 0, position: 'fixed', left: 0, top: '76px', bottom: 0, zIndex: 999 }}>
@@ -1173,58 +1184,96 @@ export default function UsersManagement() {
                 width: '80px',
                 height: '80px',
                 borderRadius: '50%',
-                background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)',
+                background: deleteConfirmation.hasUnitsError 
+                  ? 'linear-gradient(135deg, #ffc107 0%, #fd7e14 100%)'
+                  : 'linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 margin: '0 auto 1.5rem',
-                boxShadow: '0 8px 25px rgba(255, 107, 107, 0.3)'
+                boxShadow: deleteConfirmation.hasUnitsError
+                  ? '0 8px 25px rgba(255, 193, 7, 0.3)'
+                  : '0 8px 25px rgba(255, 107, 107, 0.3)'
               }}
             >
-              <i className="bi bi-trash" style={{ fontSize: '2rem', color: 'white' }}></i>
+              <i className={deleteConfirmation.hasUnitsError ? 'bi bi-exclamation-triangle' : 'bi bi-trash'} style={{ fontSize: '2rem', color: 'white' }}></i>
             </div>
             <h5 style={{ marginBottom: '1rem', color: '#2c3e50' }}>
-              Delete User Account
+              {deleteConfirmation.hasUnitsError ? 'Cannot Delete User' : 'Delete User Account'}
             </h5>
-            <p style={{ color: '#6c757d', marginBottom: '1.5rem', lineHeight: '1.6' }}>
-              Are you sure you want to delete <strong>{deleteConfirmation.userName}</strong>?
-              <br />
-              <small className="text-muted">This action cannot be undone.</small>
-            </p>
+            {deleteConfirmation.hasUnitsError ? (
+              <div>
+                <p style={{ color: '#dc3545', marginBottom: '1rem', lineHeight: '1.6', fontWeight: '600' }}>
+                  <strong>{deleteConfirmation.userName}</strong> cannot be deleted because they still have <strong>{deleteConfirmation.units.toFixed(2)} units</strong> allocated.
+                </p>
+                <p style={{ color: '#6c757d', marginBottom: '1.5rem', lineHeight: '1.6' }}>
+                  The user must withdraw all their money (units = 0.00) before their account can be deleted.
+                  <br />
+                  <small className="text-muted">Please ensure all investments are liquidated first.</small>
+                </p>
+              </div>
+            ) : (
+              <p style={{ color: '#6c757d', marginBottom: '1.5rem', lineHeight: '1.6' }}>
+                Are you sure you want to delete <strong>{deleteConfirmation.userName}</strong>?
+                <br />
+                <small className="text-muted">This action cannot be undone.</small>
+              </p>
+            )}
           </div>
         </Modal.Body>
         <Modal.Footer style={{ border: 'none', padding: '1rem 2rem 2rem' }}>
-          <Button 
-            variant="secondary" 
-            onClick={handleDeleteCancel}
-            style={{
-              borderRadius: '12px',
-              padding: '12px 24px',
-              fontWeight: '600',
-              border: 'none',
-              background: 'linear-gradient(135deg, #6c757d 0%, #495057 100%)',
-              boxShadow: '0 4px 15px rgba(108, 117, 125, 0.2)',
-              transition: 'all 0.3s ease'
-            }}
-          >
-            Cancel
-          </Button>
-          <Button 
-            variant="danger" 
-            onClick={handleDeleteConfirm}
-            style={{
-              borderRadius: '12px',
-              padding: '12px 24px',
-              fontWeight: '600',
-              border: 'none',
-              background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)',
-              boxShadow: '0 4px 15px rgba(255, 107, 107, 0.3)',
-              transition: 'all 0.3s ease'
-            }}
-          >
-            <i className="bi bi-trash me-2"></i>
-            Delete User
-          </Button>
+          {deleteConfirmation.hasUnitsError ? (
+            <Button 
+              onClick={handleDeleteCancel}
+              style={{
+                borderRadius: '12px',
+                padding: '12px 24px',
+                fontWeight: '600',
+                border: 'none',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                boxShadow: '0 4px 15px rgba(102, 126, 234, 0.2)',
+                transition: 'all 0.3s ease',
+                color: 'white'
+              }}
+            >
+              <i className="bi bi-check-circle me-2"></i>
+              Understood
+            </Button>
+          ) : (
+            <>
+              <Button 
+                variant="secondary" 
+                onClick={handleDeleteCancel}
+                style={{
+                  borderRadius: '12px',
+                  padding: '12px 24px',
+                  fontWeight: '600',
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #6c757d 0%, #495057 100%)',
+                  boxShadow: '0 4px 15px rgba(108, 117, 125, 0.2)',
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="danger" 
+                onClick={handleDeleteConfirm}
+                style={{
+                  borderRadius: '12px',
+                  padding: '12px 24px',
+                  fontWeight: '600',
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)',
+                  boxShadow: '0 4px 15px rgba(255, 107, 107, 0.3)',
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                <i className="bi bi-trash me-2"></i>
+                Delete User
+              </Button>
+            </>
+          )}
         </Modal.Footer>
       </Modal>
           </Container>

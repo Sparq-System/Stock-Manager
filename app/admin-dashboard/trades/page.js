@@ -615,7 +615,7 @@ export default function TradesManagement() {
       />
       
       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000 }}>
-        <Navbar user={user} />
+        <Navbar user={user} isAdmin={true} />
       </div>
       <div className="d-flex" style={{ height: '100vh', paddingTop: '76px' }}>
         <div style={{ flexShrink: 0, position: 'fixed', left: 0, top: '76px', bottom: 0, zIndex: 999 }}>
