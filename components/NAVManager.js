@@ -10,7 +10,6 @@ export default function NAVManager() {
   const [error, setError] = useState('')
   const [user, setUser] = useState(null)
   const [formData, setFormData] = useState({
-    date: format(new Date(), 'yyyy-MM-dd'),
     value: ''
   })
 
@@ -36,7 +35,7 @@ export default function NAVManager() {
 
       if (response.ok) {
         const data = await response.json()
-        setNavs(data.navs)
+        setNavs(data.navs || [])
       } else {
         setError('Failed to fetch NAV data')
       }
@@ -59,13 +58,15 @@ export default function NAVManager() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          date: format(new Date(), 'yyyy-MM-dd'),
+          value: formData.value
+        })
       })
 
       if (response.ok) {
         setShowModal(false)
         setFormData({
-          date: format(new Date(), 'yyyy-MM-dd'),
           value: ''
         })
         fetchNAVs()
@@ -82,7 +83,7 @@ export default function NAVManager() {
     if (!confirm('Are you sure you want to delete this NAV record?')) return
 
     try {
-      const response = await fetch(`/api/nav?navId=${navId}`, {
+      const response = await fetch(`/api/nav?id=${navId}`, {
         method: 'DELETE'
       })
 
@@ -176,10 +177,31 @@ export default function NAVManager() {
             <i className="bi bi-bar-chart" style={{ fontSize: '22px', color: 'white' }}></i>
           </div>
           <div>
-            <h2 style={{ margin: 0, color: '#1e293b', fontSize: '24px', fontWeight: '700' }}>NAV History</h2>
+            <h2 style={{ margin: 0, color: '#1e293b', fontSize: '24px', fontWeight: '700' }}>NAV Performance History</h2>
             <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '14px' }}>Track portfolio performance over time</p>
           </div>
         </div>
+        
+        {/* Latest NAV Value Display */}
+        {navs.length > 0 && (
+          <div 
+            style={{
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              borderRadius: '16px',
+              padding: '16px 20px',
+              color: 'white',
+              textAlign: 'center',
+              boxShadow: '0 8px 20px rgba(16, 185, 129, 0.3)',
+              minWidth: '140px'
+            }}
+          >
+            <div style={{ fontSize: '12px', fontWeight: '500', opacity: 0.9, marginBottom: '4px' }}>Latest NAV</div>
+            <div style={{ fontSize: '20px', fontWeight: '700' }}>₹{parseFloat(navs[0].value).toFixed(2)}</div>
+            <div style={{ fontSize: '10px', opacity: 0.8, marginTop: '2px' }}>
+              {format(new Date(navs[0].date), 'dd MMM yyyy')}
+            </div>
+          </div>
+        )}
         <Button 
           style={{
             background: '#10b981',
@@ -196,7 +218,6 @@ export default function NAVManager() {
           }}
           onClick={() => {
             setFormData({
-              date: format(new Date(), 'yyyy-MM-dd'),
               value: ''
             })
             setShowModal(true)
@@ -225,11 +246,13 @@ export default function NAVManager() {
       >
         <Card.Body style={{ padding: '0' }}>
           <div className="table-responsive">
-            <Table 
+            <Table hover
               style={{
                 backgroundColor: 'transparent',
                 border: 'none',
-                marginBottom: '0'
+                marginBottom: '0',
+                tableLayout: 'auto',
+                width: '100%'
               }}
             >
               <thead>
@@ -317,7 +340,7 @@ export default function NAVManager() {
                 </tr>
               </thead>
               <tbody>
-                {navs.length === 0 ? (
+                {(!navs || navs.length === 0) ? (
                   <tr>
                     <td 
                       colSpan="5" 
@@ -529,31 +552,6 @@ export default function NAVManager() {
         </Modal.Header>
         <Form onSubmit={handleSubmit}>
            <Modal.Body style={{ padding: '32px', background: '#fafafa' }}>
-             <Form.Group className="mb-4">
-               <Form.Label style={{ fontWeight: '600', color: '#1e293b', fontSize: '14px', marginBottom: '8px' }}>Date</Form.Label>
-               <Form.Control
-                 type="date"
-                 value={formData.date}
-                 onChange={(e) => setFormData({...formData, date: e.target.value})}
-                 required
-                 style={{
-                   border: '2px solid #e2e8f0',
-                   borderRadius: '12px',
-                   padding: '12px 16px',
-                   fontSize: '14px',
-                   transition: 'all 0.2s ease',
-                   background: 'white'
-                 }}
-                 onFocus={(e) => {
-                   e.target.style.borderColor = '#10b981'
-                   e.target.style.boxShadow = '0 0 0 3px rgba(16, 185, 129, 0.1)'
-                 }}
-                 onBlur={(e) => {
-                   e.target.style.borderColor = '#e2e8f0'
-                   e.target.style.boxShadow = 'none'
-                 }}
-               />
-             </Form.Group>
              <Form.Group className="mb-4">
                <Form.Label style={{ fontWeight: '600', color: '#1e293b', fontSize: '14px', marginBottom: '8px' }}>NAV Value</Form.Label>
                <Form.Control

@@ -13,10 +13,13 @@ const NAVSchema = new mongoose.Schema({
   updatedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: false
+    required: true
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  collection: 'navs'
 })
 
-export default mongoose.models.NAV || mongoose.model('NAV', NAVSchema)
+const NAV = mongoose.models.NAV || mongoose.model('NAV', NAVSchema)
+
+export default NAV

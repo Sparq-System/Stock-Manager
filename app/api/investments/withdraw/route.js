@@ -4,7 +4,9 @@ import dbConnect from '../../../../lib/mongodb'
 import User from '../../../../models/User'
 import NAV from '../../../../models/NAV'
 import Transaction from '../../../../models/Transaction'
+import CurrentValue from '../../../../models/CurrentValue'
 import { verifyToken, getTokenFromRequest } from '../../../../utils/auth'
+import { subtractUnits } from '../../../../utils/unitManager'
 
 export async function POST(request) {
   try {
@@ -82,18 +84,14 @@ export async function POST(request) {
       )
     }
 
-    // Calculate proportional invested amount to reduce
-    // const proportionWithdrawn = unitsToWithdraw / currentUnits
-    // const investedAmountToReduce = (user.investedAmount || 0) * proportionWithdrawn
-    user.investedAmount = Math.max(0, user.investedAmount - withdrawAmount)
-    user.units = Math.max(0, currentUnits - unitsToWithdraw)
+    // Update user investment data using unitManager
+    await subtractUnits(user._id, unitsToWithdraw, withdrawAmount)
 
-    // Update user investment data
-    // user.investedAmount = Math.max(0, (user.investedAmount || 0) - investedAmountToReduce)
-    // user.units = Math.max(0, currentUnits - unitsToWithdraw)
-    // currentValue is now calculated dynamically: units * NAV
-    
-    await user.save()
+    // Update current value by subtracting the withdrawal amount
+    await CurrentValue.subtractFromCurrentValue(withdrawAmount, 'withdrawal', `Withdrawal of ${withdrawAmount} processed by admin for user ${user.userCode}`)
+
+    // Fetch updated user data to ensure accurate values
+    const updatedUser = await User.findById(userId)
 
     // Get admin user details for transaction record
     const adminUser = await User.findById(decoded.userId)
@@ -118,13 +116,15 @@ export async function POST(request) {
     return NextResponse.json({ 
       message: 'Money withdrawn successfully',
       user: {
-        _id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        investedAmount: user.investedAmount,
-        units: user.units,
-        currentValue: user.units * currentNAV.value // Calculate dynamically
+        _id: updatedUser._id,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+        email: updatedUser.email,
+        userCode: updatedUser.userCode,
+        dateOfJoining: updatedUser.dateOfJoining,
+        investedAmount: updatedUser.investedAmount,
+        units: updatedUser.units,
+        currentValue: updatedUser.units * currentNAV.value
       },
       transaction: {
         withdrawAmount: withdrawAmount,

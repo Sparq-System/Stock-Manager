@@ -23,7 +23,7 @@ ChartJS.register(
   Legend
 )
 
-export default function ReturnChart({ trades }) {
+export default function ReturnChart({ holdings }) {
   const [period, setPeriod] = useState('1Y')
   const [chartData, setChartData] = useState({
     labels: [],
@@ -32,10 +32,10 @@ export default function ReturnChart({ trades }) {
 
   useEffect(() => {
     generateChartData()
-  }, [trades, period])
+  }, [holdings, period])
 
   const generateChartData = () => {
-    if (!trades.length) return
+    if (!holdings.length) return
 
     const now = new Date()
     let startDate = new Date()
@@ -65,10 +65,10 @@ export default function ReturnChart({ trades }) {
     let currentInvested = 0
     let currentValue = 0
 
-    // Calculate initial values
-    trades.forEach(trade => {
-      currentInvested += trade.purchaseRate * trade.unitsPurchased
-      currentValue += trade.purchaseRate * trade.unitsPurchased * 1.1 // Mock 10% growth
+    // Calculate initial values from holdings
+    holdings.forEach(holding => {
+      currentInvested += holding.totalInvestment || 0
+      currentValue += (holding.remainingUnits || 0) * (holding.averagePrice || 0) * 1.1 // Mock 10% growth
     })
 
     for (let i = 0; i <= 12; i++) {

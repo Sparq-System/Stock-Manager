@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Container, Row, Col, Card, Button, Modal, Form, Alert, Table, Badge } from 'react-bootstrap'
 import { format } from 'date-fns'
+import * as XLSX from 'xlsx'
 import Navbar from '../../../components/Navbar'
 import Sidebar from '../../../components/Sidebar'
 
@@ -32,9 +33,13 @@ export default function UsersManagement() {
   const [deleteConfirmation, setDeleteConfirmation] = useState({
     show: false,
     userId: null,
-    userName: ''
+    userName: '',
+    hasUnitsError: false,
+    units: 0
   })
   const [showPassword, setShowPassword] = useState(false)
+  const [viewUser, setViewUser] = useState(null)
+  const [showViewModal, setShowViewModal] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   useEffect(() => {
@@ -241,18 +246,49 @@ export default function UsersManagement() {
       })
 
       if (response.ok) {
-        setDeleteConfirmation({ show: false, userId: null, userName: '' })
+        setDeleteConfirmation({ show: false, userId: null, userName: '', hasUnitsError: false, units: 0 })
         fetchUsers()
       } else {
-        setError('Failed to delete user')
+        const data = await response.json()
+        if (data.hasUnits) {
+          setDeleteConfirmation(prev => ({
+            ...prev,
+            hasUnitsError: true,
+            units: data.units
+          }))
+        } else {
+          setError(data.message || 'Failed to delete user')
+        }
       }
     } catch (error) {
       setError('Failed to delete user')
     }
   }
 
+  const exportToExcel = () => {
+    // Create workbook and worksheet
+    const wb = XLSX.utils.book_new()
+    const wsData = [
+      ['Unique ID', 'Name', 'Email', 'Phone', 'Role', 'Joined On'],
+      ...users.map(user => [
+        user.userCode || 'N/A',
+        `${user.firstName} ${user.lastName}`,
+        user.email,
+        user.phone || 'N/A',
+        user.role.toUpperCase(),
+        user.createdAt ? format(new Date(user.createdAt), 'dd MMM yyyy') : 'N/A'
+      ])
+    ]
+    
+    const ws = XLSX.utils.aoa_to_sheet(wsData)
+    XLSX.utils.book_append_sheet(wb, ws, 'Users')
+    
+    // Generate and download XLSX file
+    XLSX.writeFile(wb, `Users_export_${format(new Date(), 'dd-MM-yyyy')}.xlsx`)
+  }
+
   const handleDeleteCancel = () => {
-    setDeleteConfirmation({ show: false, userId: null, userName: '' })
+    setDeleteConfirmation({ show: false, userId: null, userName: '', hasUnitsError: false, units: 0 })
   }
 
   const getRoleBadgeVariant = (role) => {
@@ -328,7 +364,7 @@ export default function UsersManagement() {
   return (
     <div style={{ ...pageStyle, position: 'fixed', width: '100%', height: '100vh' }}>
       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000 }}>
-        <Navbar user={user} />
+        <Navbar user={user} isAdmin={true} />
       </div>
       <div className="d-flex" style={{ height: '100vh', paddingTop: '76px' }}>
         <div style={{ flexShrink: 0, position: 'fixed', left: 0, top: '76px', bottom: 0, zIndex: 999 }}>
@@ -426,35 +462,54 @@ export default function UsersManagement() {
                           <p className="text-muted mb-0">Manage system users and permissions</p>
                         </div>
                       </div>
-                      <Form.Control
-                        type="text"
-                        placeholder="🔍 Search by name, email, phone, or user ID..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        style={{
-                          width: '300px',
-                          borderRadius: '16px',
-                          border: '2px solid rgba(102, 126, 234, 0.2)',
-                          padding: '12px 20px',
-                          fontSize: '14px',
-                          transition: 'all 0.3s ease',
+                      <div className="d-flex gap-2 align-items-center">
+                        <Form.Control
+                          type="text"
+                          placeholder="🔍 Search by name, email, phone, or user ID..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          style={{
+                            width: '300px',
+                            borderRadius: '16px',
+                            border: '2px solid rgba(102, 126, 234, 0.2)',
+                            padding: '12px 20px',
+                            fontSize: '14px',
+                            transition: 'all 0.3s ease',
                           background: 'rgba(255,255,255,0.8)',
                           backdropFilter: 'blur(10px)'
                         }}
                       />
+                      <Button
+                        onClick={exportToExcel}
+                        style={{
+                          background: 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
+                          border: 'none',
+                          borderRadius: '12px',
+                          padding: '12px 16px',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          color: 'white',
+                          transition: 'all 0.3s ease',
+                          boxShadow: '0 4px 15px rgba(40, 167, 69, 0.3)'
+                        }}
+                        title="Export to Excel"
+                      >
+                        <i className="bi bi-download me-2"></i>
+                        Export
+                      </Button>
+                    </div>
                     </div>
                     <div className="table-responsive" style={{ borderRadius: '16px', overflow: 'hidden' }}>
-                      <Table hover style={{ marginBottom: 0 }}>
+                      <Table hover style={{ marginBottom: 0, tableLayout: 'auto', width: '100%' }}>
                         <thead style={{ background: 'linear-gradient(135deg, #f8f9ff 0%, #e8ecff 100%)' }}>
                           <tr>
-                            <th style={{ border: 'none', padding: '16px 20px', fontWeight: '600', color: '#2c3e50' }}>Unique ID</th>
-                            <th style={{ border: 'none', padding: '16px 20px', fontWeight: '600', color: '#2c3e50' }}>Name</th>
-                            <th style={{ border: 'none', padding: '16px 20px', fontWeight: '600', color: '#2c3e50' }}>Email</th>
-                            <th style={{ border: 'none', padding: '16px 20px', fontWeight: '600', color: '#2c3e50' }}>Phone</th>
-                            <th style={{ border: 'none', padding: '16px 20px', fontWeight: '600', color: '#2c3e50' }}>Role</th>
-                            <th style={{ border: 'none', padding: '16px 20px', fontWeight: '600', color: '#2c3e50' }}>Created On</th>
-                            <th style={{ border: 'none', padding: '16px 20px', fontWeight: '600', color: '#2c3e50' }}>Updated On</th>
-                            <th style={{ border: 'none', padding: '16px 20px', fontWeight: '600', color: '#2c3e50' }}>Actions</th>
+                            <th style={{ border: '1px solid #e9ecef', padding: '12px 8px', fontWeight: '600', color: '#2c3e50', textAlign: 'center', whiteSpace: 'nowrap' }}>Unique ID</th>
+                            <th style={{ border: '1px solid #e9ecef', padding: '12px 8px', fontWeight: '600', color: '#2c3e50', textAlign: 'center', whiteSpace: 'nowrap' }}>Name</th>
+                            <th style={{ border: '1px solid #e9ecef', padding: '12px 8px', fontWeight: '600', color: '#2c3e50', textAlign: 'center', whiteSpace: 'nowrap' }}>Email</th>
+                            <th style={{ border: '1px solid #e9ecef', padding: '12px 8px', fontWeight: '600', color: '#2c3e50', textAlign: 'center', whiteSpace: 'nowrap' }}>Phone</th>
+                            <th style={{ border: '1px solid #e9ecef', padding: '12px 8px', fontWeight: '600', color: '#2c3e50', textAlign: 'center', whiteSpace: 'nowrap' }}>Role</th>
+                            <th style={{ border: '1px solid #e9ecef', padding: '12px 8px', fontWeight: '600', color: '#2c3e50', textAlign: 'center', whiteSpace: 'nowrap' }}>Joined On</th>
+                            <th style={{ border: '1px solid #e9ecef', padding: '12px 8px', fontWeight: '600', color: '#2c3e50', textAlign: 'center', whiteSpace: 'nowrap' }}>Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -484,15 +539,15 @@ export default function UsersManagement() {
                             
                             return filteredUsers.map((user, index) => (
                               <tr key={user._id}>
-                                <td style={{ border: 'none', padding: '16px 20px', color: '#2c3e50', fontWeight: '600' }}>
+                                <td style={{ border: '1px solid #e9ecef', padding: '12px 8px', color: '#2c3e50', fontWeight: '600', textAlign: 'center', whiteSpace: 'nowrap' }}>
                                   {user.userCode || 'N/A'}
                                 </td>
-                                <td style={{ border: 'none', padding: '16px 20px', fontWeight: '500', color: '#2c3e50' }}>
+                                <td style={{ border: '1px solid #e9ecef', padding: '12px 8px', fontWeight: '500', color: '#2c3e50', textAlign: 'center', whiteSpace: 'nowrap' }}>
                                   {user.firstName} {user.lastName}
                                 </td>
-                                <td style={{ border: 'none', padding: '16px 20px', color: '#6c757d' }}>{user.email}</td>
-                                <td style={{ border: 'none', padding: '16px 20px', color: '#6c757d' }}>{user.phone || 'N/A'}</td>
-                                <td style={{ border: 'none', padding: '16px 20px' }}>
+                                <td style={{ border: '1px solid #e9ecef', padding: '12px 8px', color: '#6c757d', textAlign: 'center', whiteSpace: 'nowrap' }}>{user.email}</td>
+                                <td style={{ border: '1px solid #e9ecef', padding: '12px 8px', color: '#6c757d', textAlign: 'center', whiteSpace: 'nowrap' }}>{user.phone || 'N/A'}</td>
+                                <td style={{ border: '1px solid #e9ecef', padding: '12px 8px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                                   <Badge 
                                     className="d-flex align-items-center gap-1"
                                     style={{
@@ -505,7 +560,8 @@ export default function UsersManagement() {
                                       borderRadius: '12px',
                                       padding: '6px 12px',
                                       fontSize: '12px',
-                                      fontWeight: '600'
+                                      fontWeight: '600',
+                                      margin: '0 auto'
                                     }}
                                   >
                                     <i className={`bi ${
@@ -516,45 +572,76 @@ export default function UsersManagement() {
                                     {user.role.toUpperCase()}
                                   </Badge>
                                 </td>
-                                <td style={{ border: 'none', padding: '16px 20px', color: '#6c757d' }}>
+                                <td style={{ border: '1px solid #e9ecef', padding: '12px 8px', color: '#6c757d', textAlign: 'center', whiteSpace: 'nowrap' }}>
                                   {user.createdAt ? format(new Date(user.createdAt), 'MMM dd, yyyy') : 'N/A'}
                                 </td>
-                                <td style={{ border: 'none', padding: '16px 20px', color: '#6c757d' }}>
-                                  {user.updatedAt ? format(new Date(user.updatedAt), 'MMM dd, yyyy') : 'N/A'}
-                                </td>
-                                <td style={{ border: 'none', padding: '16px 20px' }}>
-                                  <div className="d-flex gap-2">
+                                <td style={{ border: '1px solid #e9ecef', padding: '12px 8px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                                  <div className="d-flex gap-2 justify-content-center">
+                                    <Button
+                                      style={{
+                                        background: '#28a745',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        padding: '8px',
+                                        fontSize: '14px',
+                                        fontWeight: '600',
+                                        transition: 'all 0.3s ease',
+                                        width: '36px',
+                                        height: '36px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                      }}
+                                      size="sm"
+                                      title="View Details"
+                                      onClick={() => {
+                                        setViewUser(user)
+                                        setShowViewModal(true)
+                                      }}
+                                    >
+                                      <i className="bi bi-eye"></i>
+                                    </Button>
                                     <Button
                                       style={{
                                         background: '#4facfe',
                                         border: 'none',
                                         borderRadius: '8px',
-                                        padding: '6px 12px',
-                                        fontSize: '12px',
+                                        padding: '8px',
+                                        fontSize: '14px',
                                         fontWeight: '600',
-                                        transition: 'all 0.3s ease'
+                                        transition: 'all 0.3s ease',
+                                        width: '36px',
+                                        height: '36px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
                                       }}
                                       size="sm"
+                                      title="Edit User"
                                       onClick={() => handleEdit(user)}
                                     >
-                                      <i className="bi bi-pencil me-1"></i>
-                                      Edit
+                                      <i className="bi bi-pencil"></i>
                                     </Button>
                                     <Button
                                       style={{
                                         background: '#ff6b6b',
                                         border: 'none',
                                         borderRadius: '8px',
-                                        padding: '6px 12px',
-                                        fontSize: '12px',
+                                        padding: '8px',
+                                        fontSize: '14px',
                                         fontWeight: '600',
-                                        transition: 'all 0.3s ease'
+                                        transition: 'all 0.3s ease',
+                                        width: '36px',
+                                        height: '36px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
                                       }}
                                       size="sm"
+                                      title="Delete User"
                                       onClick={() => handleDeleteClick(user)}
                                     >
-                                      <i className="bi bi-trash me-1"></i>
-                                      Delete
+                                      <i className="bi bi-trash"></i>
                                     </Button>
                                   </div>
                                 </td>
@@ -568,11 +655,10 @@ export default function UsersManagement() {
                 </Card>
               </Col>
             </Row>
-          </Container>
-        </div>
-      </div>
+            
 
-      {/* User Modal */}
+            
+            {/* User Modal */}
       <Modal 
         show={showModal} 
         onHide={() => setShowModal(false)}
@@ -959,6 +1045,118 @@ export default function UsersManagement() {
         </div>
       </Modal>
 
+      {/* View User Modal */}
+      <Modal 
+        show={showViewModal} 
+        onHide={() => setShowViewModal(false)}
+        centered
+        size="lg"
+      >
+        <Modal.Header 
+          closeButton
+          style={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white',
+            border: 'none'
+          }}
+        >
+          <Modal.Title>
+            <i className="bi bi-person-circle me-2"></i>
+            User Details
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ padding: '2rem' }}>
+          {viewUser && (
+            <div>
+              <div className="text-center mb-4">
+                <div 
+                  style={{
+                    width: '80px',
+                    height: '80px',
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto 1rem',
+                    boxShadow: '0 8px 25px rgba(102, 126, 234, 0.3)'
+                  }}
+                >
+                  <i className="bi bi-person" style={{ fontSize: '2rem', color: 'white' }}></i>
+                </div>
+                <h4 style={{ color: '#2c3e50', marginBottom: '0.5rem' }}>
+                  {viewUser.firstName} {viewUser.lastName}
+                </h4>
+                <Badge 
+                  style={{
+                    background: viewUser.role === 'admin' 
+                      ? 'linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)'
+                      : viewUser.role === 'manager'
+                      ? 'linear-gradient(135deg, #feca57 0%, #ff9ff3 100%)'
+                      : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    border: 'none',
+                    borderRadius: '12px',
+                    padding: '6px 12px',
+                    fontSize: '12px',
+                    fontWeight: '600'
+                  }}
+                >
+                  <i className={`bi ${
+                    viewUser.role === 'admin' ? 'bi-shield-fill' :
+                    viewUser.role === 'manager' ? 'bi-person-gear' :
+                    'bi-person-fill'
+                  } me-1`}></i>
+                  {viewUser.role.toUpperCase()}
+                </Badge>
+              </div>
+              
+              <div className="row">
+                <div className="col-md-6 mb-3">
+                  <strong style={{ color: '#2c3e50' }}>Unique ID:</strong>
+                  <p style={{ color: '#6c757d', marginBottom: '0' }}>{viewUser.userCode || 'N/A'}</p>
+                </div>
+                <div className="col-md-6 mb-3">
+                  <strong style={{ color: '#2c3e50' }}>Email:</strong>
+                  <p style={{ color: '#6c757d', marginBottom: '0' }}>{viewUser.email}</p>
+                </div>
+                <div className="col-md-6 mb-3">
+                  <strong style={{ color: '#2c3e50' }}>Phone:</strong>
+                  <p style={{ color: '#6c757d', marginBottom: '0' }}>{viewUser.phone || 'N/A'}</p>
+                </div>
+                <div className="col-md-6 mb-3">
+                  <strong style={{ color: '#2c3e50' }}>Joined On:</strong>
+                  <p style={{ color: '#6c757d', marginBottom: '0' }}>
+                    {viewUser.createdAt ? format(new Date(viewUser.createdAt), 'dd MMM yyyy') : 'N/A'}
+                  </p>
+                </div>
+                <div className="col-md-6 mb-3">
+                  <strong style={{ color: '#2c3e50' }}>Last Updated:</strong>
+                  <p style={{ color: '#6c757d', marginBottom: '0' }}>
+                    {viewUser.updatedAt ? format(new Date(viewUser.updatedAt), 'dd MMM yyyy') : 'N/A'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer style={{ border: 'none', padding: '1rem 2rem 2rem' }}>
+          <Button 
+            onClick={() => setShowViewModal(false)}
+            style={{
+              borderRadius: '12px',
+              padding: '12px 24px',
+              fontWeight: '600',
+              border: 'none',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              boxShadow: '0 4px 15px rgba(102, 126, 234, 0.2)',
+              transition: 'all 0.3s ease'
+            }}
+          >
+            Close
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
       {/* Delete Confirmation Modal */}
       <Modal 
         show={deleteConfirmation.show} 
@@ -986,60 +1184,101 @@ export default function UsersManagement() {
                 width: '80px',
                 height: '80px',
                 borderRadius: '50%',
-                background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)',
+                background: deleteConfirmation.hasUnitsError 
+                  ? 'linear-gradient(135deg, #ffc107 0%, #fd7e14 100%)'
+                  : 'linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 margin: '0 auto 1.5rem',
-                boxShadow: '0 8px 25px rgba(255, 107, 107, 0.3)'
+                boxShadow: deleteConfirmation.hasUnitsError
+                  ? '0 8px 25px rgba(255, 193, 7, 0.3)'
+                  : '0 8px 25px rgba(255, 107, 107, 0.3)'
               }}
             >
-              <i className="bi bi-trash" style={{ fontSize: '2rem', color: 'white' }}></i>
+              <i className={deleteConfirmation.hasUnitsError ? 'bi bi-exclamation-triangle' : 'bi bi-trash'} style={{ fontSize: '2rem', color: 'white' }}></i>
             </div>
             <h5 style={{ marginBottom: '1rem', color: '#2c3e50' }}>
-              Delete User Account
+              {deleteConfirmation.hasUnitsError ? 'Cannot Delete User' : 'Delete User Account'}
             </h5>
-            <p style={{ color: '#6c757d', marginBottom: '1.5rem', lineHeight: '1.6' }}>
-              Are you sure you want to delete <strong>{deleteConfirmation.userName}</strong>?
-              <br />
-              <small className="text-muted">This action cannot be undone.</small>
-            </p>
+            {deleteConfirmation.hasUnitsError ? (
+              <div>
+                <p style={{ color: '#dc3545', marginBottom: '1rem', lineHeight: '1.6', fontWeight: '600' }}>
+                  <strong>{deleteConfirmation.userName}</strong> cannot be deleted because they still have <strong>{deleteConfirmation.units.toFixed(2)} units</strong> allocated.
+                </p>
+                <p style={{ color: '#6c757d', marginBottom: '1.5rem', lineHeight: '1.6' }}>
+                  The user must withdraw all their money (units = 0.00) before their account can be deleted.
+                  <br />
+                  <small className="text-muted">Please ensure all investments are liquidated first.</small>
+                </p>
+              </div>
+            ) : (
+              <p style={{ color: '#6c757d', marginBottom: '1.5rem', lineHeight: '1.6' }}>
+                Are you sure you want to delete <strong>{deleteConfirmation.userName}</strong>?
+                <br />
+                <small className="text-muted">This action cannot be undone.</small>
+              </p>
+            )}
           </div>
         </Modal.Body>
         <Modal.Footer style={{ border: 'none', padding: '1rem 2rem 2rem' }}>
-          <Button 
-            variant="secondary" 
-            onClick={handleDeleteCancel}
-            style={{
-              borderRadius: '12px',
-              padding: '12px 24px',
-              fontWeight: '600',
-              border: 'none',
-              background: 'linear-gradient(135deg, #6c757d 0%, #495057 100%)',
-              boxShadow: '0 4px 15px rgba(108, 117, 125, 0.2)',
-              transition: 'all 0.3s ease'
-            }}
-          >
-            Cancel
-          </Button>
-          <Button 
-            variant="danger" 
-            onClick={handleDeleteConfirm}
-            style={{
-              borderRadius: '12px',
-              padding: '12px 24px',
-              fontWeight: '600',
-              border: 'none',
-              background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)',
-              boxShadow: '0 4px 15px rgba(255, 107, 107, 0.3)',
-              transition: 'all 0.3s ease'
-            }}
-          >
-            <i className="bi bi-trash me-2"></i>
-            Delete User
-          </Button>
+          {deleteConfirmation.hasUnitsError ? (
+            <Button 
+              onClick={handleDeleteCancel}
+              style={{
+                borderRadius: '12px',
+                padding: '12px 24px',
+                fontWeight: '600',
+                border: 'none',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                boxShadow: '0 4px 15px rgba(102, 126, 234, 0.2)',
+                transition: 'all 0.3s ease',
+                color: 'white'
+              }}
+            >
+              <i className="bi bi-check-circle me-2"></i>
+              Understood
+            </Button>
+          ) : (
+            <>
+              <Button 
+                variant="secondary" 
+                onClick={handleDeleteCancel}
+                style={{
+                  borderRadius: '12px',
+                  padding: '12px 24px',
+                  fontWeight: '600',
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #6c757d 0%, #495057 100%)',
+                  boxShadow: '0 4px 15px rgba(108, 117, 125, 0.2)',
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="danger" 
+                onClick={handleDeleteConfirm}
+                style={{
+                  borderRadius: '12px',
+                  padding: '12px 24px',
+                  fontWeight: '600',
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)',
+                  boxShadow: '0 4px 15px rgba(255, 107, 107, 0.3)',
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                <i className="bi bi-trash me-2"></i>
+                Delete User
+              </Button>
+            </>
+          )}
         </Modal.Footer>
       </Modal>
+          </Container>
+        </div>
+      </div>
     </div>
   )
 }

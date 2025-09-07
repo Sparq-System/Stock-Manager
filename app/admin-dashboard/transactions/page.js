@@ -606,8 +606,8 @@ export default function TransactionsPage() {
                   </div>
                 </Card.Header>
                 <Card.Body className="p-0">
-                  <div className="table-responsive" style={{maxHeight: '600px', overflowX: 'auto'}}>
-                    <Table className="mb-0" style={{ borderCollapse: 'separate', borderSpacing: '0', minWidth: '100%', width: 'auto' }}>
+                  <div className="table-responsive" style={{ borderRadius: '16px', overflow: 'hidden' }}>
+                    <Table hover style={{ margin: '0', background: 'white', fontSize: '14px', tableLayout: 'auto', width: '100%' }}>
                       <thead>
                         <tr style={{ background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)' }}>
                           <th 

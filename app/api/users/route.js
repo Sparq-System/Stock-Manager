@@ -217,6 +217,15 @@ export async function DELETE(request) {
       return NextResponse.json({ message: 'User not found' }, { status: 404 })
     }
 
+    // Check if user has remaining units
+    if (user.units && user.units > 0) {
+      return NextResponse.json({ 
+        message: 'Cannot delete user with remaining units',
+        hasUnits: true,
+        units: user.units
+      }, { status: 400 })
+    }
+
     await User.findByIdAndDelete(userId)
 
     return NextResponse.json({ message: 'User deleted successfully' })
