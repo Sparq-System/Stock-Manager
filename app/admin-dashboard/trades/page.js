@@ -4,29 +4,427 @@ import { Container, Row, Col, Card, Button, Modal, Form, Alert, Table, Badge } f
 import { format } from 'date-fns'
 import Navbar from '../../../components/Navbar'
 import Sidebar from '../../../components/Sidebar'
+import StockDisplay from '../../../components/StockDisplay'
+
+const TradeDetailsContent = ({ viewingTrade }) => {
+  const [stockSymbol, setStockSymbol] = useState(null)
+  
+  useEffect(() => {
+    const fetchSymbol = async () => {
+      if (viewingTrade?.stockName) {
+        try {
+          const response = await fetch(`/api/stock-symbol?name=${encodeURIComponent(viewingTrade.stockName)}`)
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`)
+          }
+          const data = await response.json()
+          const symbol = data.symbol || null
+          setStockSymbol(symbol)
+        } catch (error) {
+          console.error('Error fetching stock symbol:', error)
+          setStockSymbol(null)
+        }
+      } else {
+        setStockSymbol(null)
+      }
+    }
+    
+    fetchSymbol()
+  }, [viewingTrade?.stockName])
+  
+  if (!viewingTrade) return null;
+  
+  return (
+    <div className="row g-4">
+      {/* Stock Information */}
+      <div className="col-12">
+        <div 
+          style={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            borderRadius: '18px',
+            padding: '0',
+            boxShadow: '0 12px 30px rgba(102, 126, 234, 0.25)',
+            border: 'none',
+            overflow: 'hidden'
+          }}
+        >
+          <div style={{
+            background: 'rgba(255,255,255,0.15)',
+            padding: '18px 25px',
+            borderBottom: '1px solid rgba(255,255,255,0.2)'
+          }}>
+            <h5 style={{ 
+              color: 'white', 
+              margin: '0', 
+              fontWeight: '700',
+              fontSize: '16px',
+              display: 'flex',
+              alignItems: 'center'
+            }}>
+              <i className="bi bi-building me-2" style={{ fontSize: '18px' }}></i>
+              Stock Information
+            </h5>
+          </div>
+          <div style={{
+            background: 'white',
+            padding: '25px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '20px' }}>
+              {/* Stock Display with Image, Symbol, and Company Name */}
+              <div style={{ flex: '1', minWidth: '200px' }}>
+                <StockDisplay 
+                  stockName={viewingTrade.stockName}
+                  stockSymbol={stockSymbol || 'N/A'}
+                  size="large"
+                  showName={true}
+                />
+              </div>
+              
+              {/* Status Information */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'flex-end' }}>
+                {/* Trade Status */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '14px', color: '#6c757d', fontWeight: '500' }}>Status:</span>
+                  <span style={{
+                    padding: '4px 12px',
+                    borderRadius: '20px',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    textTransform: 'capitalize',
+                    backgroundColor: (() => {
+                      switch(viewingTrade.status) {
+                        case 'active': return '#e3f2fd';
+                        case 'partial': return '#fff3e0';
+                        case 'sold': return '#e8f5e8';
+                        default: return '#f5f5f5';
+                      }
+                    })(),
+                    color: (() => {
+                      switch(viewingTrade.status) {
+                        case 'active': return '#1976d2';
+                        case 'partial': return '#f57c00';
+                        case 'sold': return '#388e3c';
+                        default: return '#666';
+                      }
+                    })()
+                  }}>
+                    {viewingTrade.status === 'partial' ? 'Partially Sold' : viewingTrade.status}
+                  </span>
+                </div>
+                
+                {/* Profit/Loss Status */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '14px', color: '#6c757d', fontWeight: '500' }}>Last Trade:</span>
+                  <span style={{
+                    padding: '4px 12px',
+                    borderRadius: '20px',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    backgroundColor: (() => {
+                      if (viewingTrade.unitsSold > 0 && viewingTrade.sellingPrice) {
+                        const totalReturn = (viewingTrade.unitsSold * viewingTrade.sellingPrice) - (viewingTrade.unitsSold * viewingTrade.purchaseRate);
+                        return totalReturn >= 0 ? '#e8f5e8' : '#ffebee';
+                      }
+                      return '#f5f5f5';
+                    })(),
+                    color: (() => {
+                      if (viewingTrade.unitsSold > 0 && viewingTrade.sellingPrice) {
+                        const totalReturn = (viewingTrade.unitsSold * viewingTrade.sellingPrice) - (viewingTrade.unitsSold * viewingTrade.purchaseRate);
+                        return totalReturn >= 0 ? '#388e3c' : '#d32f2f';
+                      }
+                      return '#666';
+                    })()
+                  }}>
+                    {(() => {
+                      if (viewingTrade.unitsSold > 0 && viewingTrade.sellingPrice) {
+                        const totalReturn = (viewingTrade.unitsSold * viewingTrade.sellingPrice) - (viewingTrade.unitsSold * viewingTrade.purchaseRate);
+                        return totalReturn >= 0 ? 'Profit' : 'Loss';
+                      }
+                      return 'No Sale';
+                    })()
+                    }
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Purchase and Selling Details */}
+      <div className="col-md-6">
+        <div 
+          style={{
+            background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+            borderRadius: '18px',
+            padding: '0',
+            boxShadow: '0 12px 30px rgba(79, 172, 254, 0.25)',
+            border: 'none',
+            height: '100%',
+            overflow: 'hidden'
+          }}
+        >
+          <div style={{
+            background: 'rgba(255,255,255,0.15)',
+            padding: '18px 25px',
+            borderBottom: '1px solid rgba(255,255,255,0.2)'
+          }}>
+            <h5 style={{ 
+              color: 'white', 
+              margin: '0', 
+              fontWeight: '700',
+              fontSize: '16px',
+              display: 'flex',
+              alignItems: 'center'
+            }}>
+              <i className="bi bi-cart-plus me-2" style={{ fontSize: '18px' }}></i>
+              Purchase Details
+            </h5>
+          </div>
+          <div style={{
+            background: 'white',
+            padding: '25px',
+            height: 'calc(100% - 60px)'
+          }}>
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                padding: '12px 16px',
+                background: '#f8f9fa',
+                borderRadius: '10px',
+                border: '1px solid #e9ecef'
+              }}>
+                <span style={{ color: '#6c757d', fontSize: '14px', fontWeight: '500' }}>Purchase Date</span>
+                <span style={{ color: '#2c3e50', fontSize: '15px', fontWeight: '600' }}>
+                  {new Date(viewingTrade.purchaseDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                </span>
+              </div>
+            </div>
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                padding: '12px 16px',
+                background: '#f8f9fa',
+                borderRadius: '10px',
+                border: '1px solid #e9ecef'
+              }}>
+                <span style={{ color: '#6c757d', fontSize: '14px', fontWeight: '500' }}>Units Purchased</span>
+                <span style={{ color: '#2c3e50', fontSize: '15px', fontWeight: '600' }}>
+                  {Math.round(viewingTrade.unitsPurchased)}
+                </span>
+              </div>
+            </div>
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                padding: '12px 16px',
+                background: '#f8f9fa',
+                borderRadius: '10px',
+                border: '1px solid #e9ecef'
+              }}>
+                <span style={{ color: '#6c757d', fontSize: '14px', fontWeight: '500' }}>Purchase Rate</span>
+                <span style={{ color: '#2c3e50', fontSize: '15px', fontWeight: '600' }}>
+                  ₹{viewingTrade.purchaseRate.toFixed(2)}
+                </span>
+              </div>
+            </div>
+            <div style={{ marginBottom: '0' }}>
+              <div style={{ 
+                padding: '16px',
+                background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                borderRadius: '12px',
+                textAlign: 'center',
+                boxShadow: '0 4px 15px rgba(79, 172, 254, 0.3)'
+              }}>
+                <div style={{ color: 'rgba(255,255,255,0.9)', fontSize: '13px', fontWeight: '500', marginBottom: '4px' }}>
+                  Total Investment
+                </div>
+                <div style={{ color: 'white', fontSize: '20px', fontWeight: '700' }}>
+                  ₹{(viewingTrade.unitsPurchased * viewingTrade.purchaseRate).toFixed(2)}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="col-md-6">
+        <div 
+          style={{
+            background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)',
+            borderRadius: '18px',
+            padding: '0',
+            boxShadow: '0 12px 30px rgba(255, 107, 107, 0.25)',
+            border: 'none',
+            height: '100%',
+            overflow: 'hidden'
+          }}
+        >
+          <div style={{
+            background: 'rgba(255,255,255,0.15)',
+            padding: '18px 25px',
+            borderBottom: '1px solid rgba(255,255,255,0.2)'
+          }}>
+            <h5 style={{ 
+              color: 'white', 
+              margin: '0', 
+              fontWeight: '700',
+              fontSize: '16px',
+              display: 'flex',
+              alignItems: 'center'
+            }}>
+              <i className="bi bi-cart-dash me-2" style={{ fontSize: '18px' }}></i>
+              Selling Details
+            </h5>
+          </div>
+          <div style={{
+            background: 'white',
+            padding: '25px',
+            height: 'calc(100% - 60px)'
+          }}>
+            {viewingTrade.sellingDate ? (
+              <>
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    padding: '12px 16px',
+                    background: '#f8f9fa',
+                    borderRadius: '10px',
+                    border: '1px solid #e9ecef'
+                  }}>
+                    <span style={{ color: '#6c757d', fontSize: '14px', fontWeight: '500' }}>Selling Date</span>
+                    <span style={{ color: '#2c3e50', fontSize: '15px', fontWeight: '600' }}>
+                      {new Date(viewingTrade.sellingDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </span>
+                  </div>
+                </div>
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    padding: '12px 16px',
+                    background: '#f8f9fa',
+                    borderRadius: '10px',
+                    border: '1px solid #e9ecef'
+                  }}>
+                    <span style={{ color: '#6c757d', fontSize: '14px', fontWeight: '500' }}>Units Sold</span>
+                    <span style={{ color: '#2c3e50', fontSize: '15px', fontWeight: '600' }}>
+                      {Math.round(viewingTrade.unitsSold) || 0}
+                    </span>
+                  </div>
+                </div>
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    padding: '12px 16px',
+                    background: '#f8f9fa',
+                    borderRadius: '10px',
+                    border: '1px solid #e9ecef'
+                  }}>
+                    <span style={{ color: '#6c757d', fontSize: '14px', fontWeight: '500' }}>Selling Price</span>
+                    <span style={{ color: '#2c3e50', fontSize: '15px', fontWeight: '600' }}>
+                      ₹{(viewingTrade.sellingPrice || 0).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+                <div style={{ marginBottom: '0' }}>
+                  <div style={{ 
+                    padding: '16px',
+                    background: (() => {
+                      const totalReturn = (viewingTrade.unitsSold * viewingTrade.sellingPrice) - (viewingTrade.unitsPurchased * viewingTrade.purchaseRate);
+                      return totalReturn >= 0 
+                        ? 'linear-gradient(135deg, #2ecc71 0%, #27ae60 100%)'
+                        : 'linear-gradient(135deg, #e74c3c 0%, #c0392b 100%)';
+                    })(),
+                    borderRadius: '12px',
+                    textAlign: 'center',
+                    boxShadow: (() => {
+                      const totalReturn = (viewingTrade.unitsSold * viewingTrade.sellingPrice) - (viewingTrade.unitsPurchased * viewingTrade.purchaseRate);
+                      return totalReturn >= 0 
+                        ? '0 4px 15px rgba(46, 204, 113, 0.3)'
+                        : '0 4px 15px rgba(231, 76, 60, 0.3)';
+                    })()
+                  }}>
+                    <div style={{ color: 'rgba(255,255,255,0.9)', fontSize: '13px', fontWeight: '500', marginBottom: '4px' }}>
+                      Return
+                    </div>
+                    <div style={{ color: 'white', fontSize: '20px', fontWeight: '700' }}>
+                      {(() => {
+                        const totalReturn = (viewingTrade.unitsSold * viewingTrade.sellingPrice) - (viewingTrade.unitsPurchased * viewingTrade.purchaseRate);
+                        return totalReturn >= 0 
+                          ? `+₹${totalReturn.toFixed(2)}`
+                          : `-₹${Math.abs(totalReturn).toFixed(2)}`;
+                      })()} 
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div style={{ 
+                textAlign: 'center', 
+                color: '#7f8c8d', 
+                fontSize: '16px',
+                fontStyle: 'italic',
+                padding: '40px 20px'
+              }}>
+                <i className="bi bi-hourglass-split" style={{ fontSize: '24px', marginBottom: '10px', display: 'block' }}></i>
+                Not sold yet
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function TradesManagement() {
   const [trades, setTrades] = useState([])
   const [user, setUser] = useState(null)
-  const [showModal, setShowModal] = useState(false)
-  const [editingTrade, setEditingTrade] = useState(null)
+
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
-  const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [tradeToDelete, setTradeToDelete] = useState(null)
+
   const [showViewModal, setShowViewModal] = useState(false)
   const [viewingTrade, setViewingTrade] = useState(null)
-  const [formData, setFormData] = useState({
-    stockName: '',
-    purchaseRate: '',
-    purchaseDate: '',
-    unitsPurchased: '',
-    sellingPrice: '',
-    sellingDate: '',
-    unitsSold: ''
-  })
+  const [stockSymbols, setStockSymbols] = useState({})
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [totalPages, setTotalPages] = useState(1)
+
+
+  // Function to fetch stock symbols for trades
+  const fetchStockSymbols = async (tradesList) => {
+    const uniqueStockNames = [...new Set(tradesList.map(trade => trade.stockName))]
+    const symbols = {}
+    
+    for (const stockName of uniqueStockNames) {
+      try {
+        const symbol = await getStockSymbolByName(stockName)
+        symbols[stockName] = symbol
+      } catch (error) {
+        console.error(`Error fetching symbol for ${stockName}:`, error)
+        symbols[stockName] = null
+      }
+    }
+    
+    setStockSymbols(symbols)
+  }
 
   useEffect(() => {
     fetchUserData()
@@ -60,6 +458,8 @@ export default function TradesManagement() {
       if (response.ok) {
         const data = await response.json()
         setTrades(data.trades)
+        // Fetch stock symbols for the loaded trades
+        await fetchStockSymbols(data.trades)
       } else {
         setError('Failed to fetch trades')
       }
@@ -70,119 +470,39 @@ export default function TradesManagement() {
     }
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setError('')
+  // Pagination helper functions
+  const getFilteredTrades = () => {
+    return trades
+      .filter(trade => 
+        trade.stockName.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+  }
 
-    try {
-      const url = '/api/trades'
-      const method = editingTrade ? 'PUT' : 'POST'
-      
-      const token = localStorage.getItem('token')
-      const requestBody = {
-        ...formData,
-        purchaseRate: parseFloat(formData.purchaseRate),
-        unitsPurchased: parseFloat(formData.unitsPurchased),
-        sellingPrice: formData.sellingPrice ? parseFloat(formData.sellingPrice) : null,
-        unitsSold: formData.unitsSold ? parseFloat(formData.unitsSold) : null
-      }
-      
-      // Validation: Units must be whole numbers
-      if (!Number.isInteger(requestBody.unitsPurchased) || requestBody.unitsPurchased <= 0) {
-        setError('Units purchased must be a positive whole number')
-        return
-      }
-      
-      if (requestBody.unitsSold && (!Number.isInteger(requestBody.unitsSold) || requestBody.unitsSold <= 0)) {
-        setError('Units sold must be a positive whole number')
-        return
-      }
-      
-      // Validation: Units sold should not exceed units purchased
-      if (requestBody.unitsSold && requestBody.unitsSold > requestBody.unitsPurchased) {
-        setError('Units sold cannot be greater than units purchased')
-        return
-      }
-      
-      // Add tradeId to request body for PUT requests
-      if (editingTrade) {
-        requestBody.tradeId = editingTrade._id
-      }
-      
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(requestBody)
-      })
+  const getPaginatedTrades = () => {
+    const filteredTrades = getFilteredTrades()
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    return filteredTrades.slice(startIndex, endIndex)
+  }
 
-      if (response.ok) {
-        setShowModal(false)
-        setEditingTrade(null)
-        setFormData({
-          stockName: '',
-          purchaseRate: '',
-          purchaseDate: '',
-          unitsPurchased: '',
-          sellingPrice: '',
-          sellingDate: '',
-          unitsSold: ''
-        })
-        fetchTrades()
-      } else {
-        const data = await response.json()
-        setError(data.message || `Failed to ${editingTrade ? 'update' : 'create'} trade`)
-      }
-    } catch (error) {
-      setError(`Failed to ${editingTrade ? 'update' : 'create'} trade`)
+  // Update total pages when trades or search term changes
+  useEffect(() => {
+    const filteredTrades = getFilteredTrades()
+    const newTotalPages = Math.ceil(filteredTrades.length / itemsPerPage)
+    setTotalPages(newTotalPages)
+    
+    // Reset to page 1 if current page exceeds total pages
+    if (currentPage > newTotalPages && newTotalPages > 0) {
+      setCurrentPage(1)
     }
-  }
+  }, [trades, searchTerm, itemsPerPage, currentPage])
 
-  const handleEdit = (trade) => {
-    setEditingTrade(trade)
-    setFormData({
-      stockName: trade.stockName,
-      purchaseRate: trade.purchaseRate.toString(),
-      purchaseDate: new Date(trade.purchaseDate).toISOString().split('T')[0],
-      unitsPurchased: trade.unitsPurchased.toString(),
-      sellingPrice: trade.sellingPrice ? trade.sellingPrice.toString() : '',
-      sellingDate: trade.sellingDate ? new Date(trade.sellingDate).toISOString().split('T')[0] : '',
-      unitsSold: trade.unitsSold ? trade.unitsSold.toString() : ''
-    })
-    setShowModal(true)
-  }
 
-  const handleDeleteTrade = async () => {
-    if (!tradeToDelete) return
 
-    try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`/api/trades?tradeId=${tradeToDelete._id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
 
-      if (response.ok) {
-        fetchTrades()
-        setShowDeleteModal(false)
-        setTradeToDelete(null)
-      } else {
-        setError('Failed to delete trade')
-      }
-    } catch (error) {
-      setError('Failed to delete trade')
-    }
-  }
 
-  const confirmDelete = (trade) => {
-    setTradeToDelete(trade)
-    setShowDeleteModal(true)
-  }
+
 
   // Check if user is admin
   if (user && user.role !== 'admin') {
@@ -196,43 +516,47 @@ export default function TradesManagement() {
     )
   }
 
-  // Modern page styles
   const pageStyle = {
     minHeight: '100vh',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
     position: 'relative',
     overflow: 'hidden'
   }
 
   const containerStyle = {
-    background: 'rgba(255, 255, 255, 0.95)',
-    backdropFilter: 'blur(20px)',
-    borderRadius: '24px',
-    margin: '20px',
-    padding: '32px',
-    boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
-    border: '1px solid rgba(255,255,255,0.2)'
+    position: 'relative',
+    zIndex: 2
   }
 
   const headerStyle = {
-    background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
+    background: 'rgba(255,255,255,0.15)',
     backdropFilter: 'blur(20px)',
-    borderRadius: '16px',
-    padding: '24px 32px',
+    borderRadius: '24px',
+    border: '1px solid rgba(255,255,255,0.2)',
+    padding: '32px',
     marginBottom: '32px',
-    border: '1px solid rgba(102, 126, 234, 0.2)',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center'
+    boxShadow: '0 8px 32px rgba(0,0,0,0.1)'
   }
 
   const tableCardStyle = {
-    background: 'rgba(255, 255, 255, 0.9)',
+    background: 'rgba(255,255,255,0.95)',
     backdropFilter: 'blur(20px)',
-    borderRadius: '20px',
     border: '1px solid rgba(255,255,255,0.2)',
-    boxShadow: '0 15px 35px rgba(0,0,0,0.08)',
-    overflow: 'hidden'
+    borderRadius: '24px',
+    overflow: 'hidden',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.1)'
+  }
+
+  const addButtonStyle = {
+    background: '#667eea',
+    border: 'none',
+    borderRadius: '16px',
+    padding: '12px 24px',
+    color: '#ffffff',
+    fontWeight: '600',
+    fontSize: '14px',
+    transition: 'all 0.3s ease',
+    boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
   }
 
   if (loading) {
@@ -310,81 +634,44 @@ export default function TradesManagement() {
             transition: 'margin-left 0.3s ease'
           }}
         >
-          <Container fluid style={containerStyle}>
+          <Container fluid className="py-4" style={containerStyle}>
             <Row>
               <Col>
                 <div style={headerStyle}>
-                  <div className="d-flex align-items-center">
-                    <div 
-                      className="rounded-3 p-3 me-3"
-                      style={{
-                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                        width: '60px',
-                        height: '60px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}
-                    >
-                      <i className="bi bi-graph-up text-white fs-3"></i>
-                    </div>
-                    <div>
-                      <h1 
+                  <div className="d-flex justify-content-between align-items-center">
+                    <div className="d-flex align-items-center">
+                      <div 
+                        className="rounded-3 p-3 me-3"
                         style={{
-                          fontSize: '2rem',
-                          fontWeight: '700',
-                          color: '#2c3e50',
-                          margin: '0',
                           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                          WebkitBackgroundClip: 'text',
-                          WebkitTextFillColor: 'transparent'
+                          width: '60px',
+                          height: '60px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
                         }}
                       >
-                        Trades Management
-                      </h1>
-                      <p style={{ color: '#6c757d', margin: '0', fontSize: '1rem' }}>
-                        Monitor and manage all trading activities
-                      </p>
+                        <i className="bi bi-graph-up text-white fs-3"></i>
+                      </div>
+                      <div>
+                        <h1 
+                          style={{
+                            fontSize: '2rem',
+                            fontWeight: '700',
+                            color: 'white',
+                            margin: '0'
+                          }}
+                        >
+                          Trades Management
+                        </h1>
+                        <p style={{ color: 'rgba(255,255,255,0.8)', margin: '0', fontSize: '1rem' }}>
+                          Monitor and manage all trading activities
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  <Button 
-                    onClick={() => {
-                      setEditingTrade(null)
-                      setFormData({
-                        stockName: '',
-                        purchaseRate: '',
-                        purchaseDate: '',
-                        unitsPurchased: '',
-                        sellingPrice: '',
-                        sellingDate: '',
-                        unitsSold: ''
-                      })
-                      setShowModal(true)
-                    }}
-                    style={{
-                      background: '#4facfe',
-                      border: 'none',
-                      borderRadius: '12px',
-                      padding: '12px 24px',
-                      fontWeight: '600',
-                      fontSize: '14px',
-                      color: 'white',
-                      transition: 'all 0.3s ease',
-                      boxShadow: '0 4px 15px rgba(79, 172, 254, 0.3)'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.target.style.transform = 'translateY(-2px)'
-                      e.target.style.boxShadow = '0 8px 25px rgba(79, 172, 254, 0.4)'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.transform = 'translateY(0)'
-                      e.target.style.boxShadow = '0 4px 15px rgba(79, 172, 254, 0.3)'
-                    }}
-                  >
-                    <i className="bi bi-plus-circle me-2"></i>
-                    Add New Trade
-                  </Button>
-                </div>
+
+                   </div>
+                 </div>
               </Col>
             </Row>
 
@@ -445,7 +732,10 @@ export default function TradesManagement() {
                             type="text"
                             placeholder="Search by stock name..."
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onChange={(e) => {
+                              setSearchTerm(e.target.value)
+                              setCurrentPage(1) // Reset to first page on search
+                            }}
                             style={{
                               width: '320px',
                               borderRadius: '12px',
@@ -471,83 +761,116 @@ export default function TradesManagement() {
                             }}
                           />
                         </div>
+                        
+                        {/* Items per page selector */}
+                        <div className="d-flex align-items-center gap-2">
+                          <span style={{ fontSize: '14px', color: '#6c757d', fontWeight: '500' }}>Show:</span>
+                          <Form.Select
+                            value={itemsPerPage}
+                            onChange={(e) => {
+                              setItemsPerPage(Number(e.target.value))
+                              setCurrentPage(1) // Reset to first page when changing items per page
+                            }}
+                            style={{
+                              width: '80px',
+                              borderRadius: '8px',
+                              border: '2px solid rgba(102, 126, 234, 0.2)',
+                              fontSize: '14px',
+                              fontWeight: '500',
+                              background: 'rgba(255,255,255,0.8)',
+                              backdropFilter: 'blur(10px)',
+                              padding: '8px 12px'
+                            }}
+                          >
+                            <option value={10}>10</option>
+                            <option value={25}>25</option>
+                            <option value={50}>50</option>
+                            <option value={100}>100</option>
+                          </Form.Select>
+                        </div>
                       </div>
                     </div>
                     <div className="table-responsive" style={{ borderRadius: '16px', overflow: 'hidden' }}>
-                      <Table hover style={{ margin: '0', background: 'white', fontSize: '14px', tableLayout: 'fixed', width: '100%' }}>
+                      <Table hover style={{ margin: '0', background: 'white', fontSize: '14px', tableLayout: 'auto', width: '100%' }}>
                         <thead>
-                          <tr style={{ background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)' }}>
+                          <tr style={{ background: 'linear-gradient(135deg, #f8f9ff 0%, #e8ecff 100%)' }}>
                             <th style={{ 
                               border: 'none', 
                               padding: '16px 20px', 
-                              fontWeight: '600', 
+                              fontWeight: '700', 
                               fontSize: '13px', 
-                              color: '#495057', 
-                              width: '18%',
+                              color: '#2c3e50', 
+                              textAlign: 'center',
                               textTransform: 'uppercase',
                               letterSpacing: '0.5px',
-                              borderRight: '1px solid #dee2e6'
+                              borderRight: '1px solid #dee2e6',
+                              whiteSpace: 'nowrap'
                             }}>Stock Name</th>
                             <th style={{ 
                               border: 'none', 
                               padding: '16px 20px', 
-                              fontWeight: '600', 
+                              fontWeight: '700', 
                               fontSize: '13px', 
-                              color: '#495057', 
-                              width: '15%',
+                              color: '#2c3e50', 
+                              textAlign: 'center',
                               textTransform: 'uppercase',
                               letterSpacing: '0.5px',
-                              borderRight: '1px solid #dee2e6'
+                              borderRight: '1px solid #dee2e6',
+                              whiteSpace: 'nowrap'
                             }}>Purchase Date</th>
                             <th style={{ 
                               border: 'none', 
                               padding: '16px 20px', 
-                              fontWeight: '600', 
+                              fontWeight: '700', 
                               fontSize: '13px', 
-                              color: '#495057', 
-                              width: '16%',
+                              color: '#2c3e50', 
+                              textAlign: 'center',
                               textTransform: 'uppercase',
                               letterSpacing: '0.5px',
-                              borderRight: '1px solid #dee2e6'
+                              borderRight: '1px solid #dee2e6',
+                              whiteSpace: 'nowrap'
                             }}>Total Investment</th>
                             <th style={{ 
                               border: 'none', 
                               padding: '16px 20px', 
-                              fontWeight: '600', 
+                              fontWeight: '700', 
                               fontSize: '13px', 
-                              color: '#495057', 
-                              width: '18%',
+                              color: '#2c3e50', 
+                              textAlign: 'center',
                               textTransform: 'uppercase',
                               letterSpacing: '0.5px',
-                              borderRight: '1px solid #dee2e6'
+                              borderRight: '1px solid #dee2e6',
+                              whiteSpace: 'nowrap'
                             }}>Profit</th>
                             <th style={{ 
                               border: 'none', 
                               padding: '16px 20px', 
-                              fontWeight: '600', 
+                              fontWeight: '700', 
                               fontSize: '13px', 
-                              color: '#495057', 
-                              width: '12%',
+                              color: '#2c3e50', 
+                              textAlign: 'center',
                               textTransform: 'uppercase',
                               letterSpacing: '0.5px',
-                              borderRight: '1px solid #dee2e6'
+                              borderRight: '1px solid #dee2e6',
+                              whiteSpace: 'nowrap'
                             }}>Status</th>
                             <th style={{ 
                               border: 'none', 
                               padding: '16px 20px', 
-                              fontWeight: '600', 
+                              fontWeight: '700', 
                               fontSize: '13px', 
-                              color: '#495057', 
-                              width: '21%',
+                              color: '#2c3e50', 
+                              textAlign: 'center',
                               textTransform: 'uppercase',
-                              letterSpacing: '0.5px'
+                              letterSpacing: '0.5px',
+                              whiteSpace: 'nowrap'
                             }}>Actions</th>
                           </tr>
                         </thead>
-                        <tbody>
-                          {trades.filter(trade => 
-                            trade.stockName.toLowerCase().includes(searchTerm.toLowerCase())
-                          ).length === 0 ? (
+                        <tbody style={{
+                          borderTop: '2px solid #e9ecef'
+                        }}>
+                          {getFilteredTrades().length === 0 ? (
                             <tr>
                               <td 
                                 colSpan="6" 
@@ -578,9 +901,7 @@ export default function TradesManagement() {
                               </td>
                             </tr>
                           ) : (
-                            trades.filter(trade => 
-                              trade.stockName.toLowerCase().includes(searchTerm.toLowerCase())
-                            ).map((trade, index) => {
+                            getPaginatedTrades().map((trade, index) => {
                               // Calculate return (profit/loss)
                               const calculateReturn = () => {
                                 if (!trade.sellingPrice || !trade.unitsSold) {
@@ -626,9 +947,15 @@ export default function TradesManagement() {
                                   fontWeight: '600', 
                                   color: '#2c3e50', 
                                   fontSize: '14px',
-                                  borderRight: '1px solid #f1f3f4'
+                                  borderRight: '1px solid #f1f3f4',
+                                  textAlign: 'center'
                                 }}>
-                                  {trade.stockName}
+                                  <StockDisplay 
+                                    stockName={trade.stockName}
+                                    stockSymbol={stockSymbols[trade.stockName]}
+                                    size="sm"
+                                    showName={true}
+                                  />
                                 </td>
                                 <td style={{ 
                                   border: 'none', 
@@ -636,7 +963,8 @@ export default function TradesManagement() {
                                   fontWeight: '500', 
                                   color: '#6c757d', 
                                   fontSize: '13px',
-                                  borderRight: '1px solid #f1f3f4'
+                                  borderRight: '1px solid #f1f3f4',
+                                  textAlign: 'center'
                                 }}>
                                   {format(new Date(trade.purchaseDate), 'MMM dd, yyyy')}
                                 </td>
@@ -646,14 +974,16 @@ export default function TradesManagement() {
                                   fontWeight: '600', 
                                   color: '#2c3e50', 
                                   fontSize: '14px',
-                                  borderRight: '1px solid #f1f3f4'
+                                  borderRight: '1px solid #f1f3f4',
+                                  textAlign: 'center'
                                 }}>
                                   ₹{(trade.unitsPurchased * trade.purchaseRate).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                                 </td>
                                 <td style={{ 
                                   border: 'none', 
                                   padding: '18px 20px',
-                                  borderRight: '1px solid #f1f3f4'
+                                  borderRight: '1px solid #f1f3f4',
+                                  textAlign: 'center'
                                 }}>
                                   {trade.sellingDate && trade.unitsSold ? (
                                     <div>
@@ -755,59 +1085,8 @@ export default function TradesManagement() {
                                       >
                                         <i className="bi bi-eye"></i>
                                       </Button>
-                                     <Button 
-                                        style={{
-                                          background: 'linear-gradient(135deg, #007bff 0%, #0056b3 100%)',
-                                          border: 'none',
-                                          borderRadius: '8px',
-                                          padding: '10px 12px',
-                                          fontSize: '14px',
-                                          transition: 'all 0.3s ease',
-                                          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                                        }}
-                                        size="sm"
-                                        onClick={() => handleEdit(trade)}
-                                        disabled={trade.unitsSold && trade.unitsSold === trade.unitsPurchased}
-                                        onMouseEnter={(e) => {
-                                          if (!e.target.disabled) {
-                                            e.target.style.background = 'linear-gradient(135deg, #0056b3 0%, #004085 100%)'
-                                            e.target.style.transform = 'translateY(-1px)'
-                                            e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'
-                                          }
-                                        }}
-                                        onMouseLeave={(e) => {
-                                          e.target.style.background = 'linear-gradient(135deg, #007bff 0%, #0056b3 100%)'
-                                          e.target.style.transform = 'translateY(0)'
-                                          e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'
-                                        }}
-                                      >
-                                        <i className="bi bi-pencil-square"></i>
-                                      </Button>
-                                     <Button 
-                                       style={{
-                                         background: 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)',
-                                         border: 'none',
-                                         borderRadius: '8px',
-                                         padding: '10px 12px',
-                                         fontSize: '14px',
-                                         transition: 'all 0.3s ease',
-                                         boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                                       }}
-                                       size="sm"
-                                       onClick={() => confirmDelete(trade)}
-                                       onMouseEnter={(e) => {
-                                         e.target.style.background = 'linear-gradient(135deg, #c82333 0%, #a71e2a 100%)'
-                                         e.target.style.transform = 'translateY(-1px)'
-                                         e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'
-                                       }}
-                                       onMouseLeave={(e) => {
-                                         e.target.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)'
-                                         e.target.style.transform = 'translateY(0)'
-                                         e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'
-                                       }}
-                                     >
-                                       <i className="bi bi-trash3"></i>
-                                     </Button>
+
+
                                    </div>
                                 </td>
                               </tr>
@@ -817,6 +1096,96 @@ export default function TradesManagement() {
                         </tbody>
                       </Table>
                     </div>
+                    
+                    {/* Pagination Controls */}
+                    {getFilteredTrades().length > 0 && (
+                      <div className="d-flex justify-content-between align-items-center mt-4 pt-3" style={{ borderTop: '1px solid #e9ecef' }}>
+                        <div className="d-flex align-items-center gap-3">
+                          <span style={{ fontSize: '14px', color: '#6c757d' }}>
+                            Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, getFilteredTrades().length)} of {getFilteredTrades().length} trades
+                          </span>
+                        </div>
+                        
+                        <div className="d-flex align-items-center gap-2">
+                          {/* Previous Button */}
+                          <Button
+                            variant="outline-primary"
+                            size="sm"
+                            disabled={currentPage === 1}
+                            onClick={() => setCurrentPage(currentPage - 1)}
+                            style={{
+                              borderRadius: '8px',
+                              padding: '8px 12px',
+                              fontSize: '12px',
+                              fontWeight: '600',
+                              border: '1px solid #667eea',
+                              color: currentPage === 1 ? '#6c757d' : '#667eea',
+                              background: currentPage === 1 ? '#f8f9fa' : 'white'
+                            }}
+                          >
+                            <i className="bi bi-chevron-left me-1"></i>
+                            Previous
+                          </Button>
+                          
+                          {/* Page Numbers */}
+                          <div className="d-flex gap-1">
+                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                              let pageNum;
+                              if (totalPages <= 5) {
+                                pageNum = i + 1;
+                              } else if (currentPage <= 3) {
+                                pageNum = i + 1;
+                              } else if (currentPage >= totalPages - 2) {
+                                pageNum = totalPages - 4 + i;
+                              } else {
+                                pageNum = currentPage - 2 + i;
+                              }
+                              
+                              return (
+                                <Button
+                                  key={pageNum}
+                                  variant={currentPage === pageNum ? "primary" : "outline-primary"}
+                                  size="sm"
+                                  onClick={() => setCurrentPage(pageNum)}
+                                  style={{
+                                    borderRadius: '8px',
+                                    padding: '8px 12px',
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    minWidth: '36px',
+                                    border: '1px solid #667eea',
+                                    background: currentPage === pageNum ? '#667eea' : 'white',
+                                    color: currentPage === pageNum ? 'white' : '#667eea'
+                                  }}
+                                >
+                                  {pageNum}
+                                </Button>
+                              );
+                            })}
+                          </div>
+                          
+                          {/* Next Button */}
+                          <Button
+                            variant="outline-primary"
+                            size="sm"
+                            disabled={currentPage === totalPages}
+                            onClick={() => setCurrentPage(currentPage + 1)}
+                            style={{
+                              borderRadius: '8px',
+                              padding: '8px 12px',
+                              fontSize: '12px',
+                              fontWeight: '600',
+                              border: '1px solid #667eea',
+                              color: currentPage === totalPages ? '#6c757d' : '#667eea',
+                              background: currentPage === totalPages ? '#f8f9fa' : 'white'
+                            }}
+                          >
+                            Next
+                            <i className="bi bi-chevron-right ms-1"></i>
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </Card.Body>
                 </Card>
               </Col>
@@ -854,248 +1223,9 @@ export default function TradesManagement() {
             borderRadius: '0 0 15px 15px'
           }}
         >
-          {viewingTrade && (
-            <div className="row g-4">
-              {/* Stock Information */}
-              <div className="col-12">
-                <div 
-                  style={{
-                    background: 'white',
-                    borderRadius: '15px',
-                    padding: '25px',
-                    boxShadow: '0 8px 25px rgba(0,0,0,0.1)',
-                    border: '1px solid rgba(255,255,255,0.2)'
-                  }}
-                >
-                  <h5 style={{ 
-                    color: '#2c3e50', 
-                    marginBottom: '20px', 
-                    fontWeight: '700',
-                    borderBottom: '2px solid #667eea',
-                    paddingBottom: '10px'
-                  }}>
-                    <i className="bi bi-building me-2"></i>
-                    Stock Information
-                  </h5>
-                  <div className="row">
-                    <div className="col-md-6">
-                      <div style={{ marginBottom: '15px' }}>
-                        <strong style={{ color: '#34495e', fontSize: '14px' }}>Stock Name:</strong>
-                        <div style={{ 
-                          fontSize: '18px', 
-                          fontWeight: '600', 
-                          color: '#667eea',
-                          marginTop: '5px'
-                        }}>
-                          {viewingTrade.stockName}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="col-md-6">
-                      <div style={{ marginBottom: '15px' }}>
-                        <strong style={{ color: '#34495e', fontSize: '14px' }}>Status:</strong>
-                        <div style={{ marginTop: '5px' }}>
-                          <span style={{
-                            padding: '6px 12px',
-                            borderRadius: '20px',
-                            fontSize: '12px',
-                            fontWeight: '600',
-                            background: viewingTrade.unitsSold && viewingTrade.unitsSold === viewingTrade.unitsPurchased 
-                              ? 'linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)' 
-                              : 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-                            color: 'white'
-                          }}>
-                            {viewingTrade.unitsSold && viewingTrade.unitsSold === viewingTrade.unitsPurchased ? 'Sold' : 'Active'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Purchase Details */}
-              <div className="col-md-6">
-                <div 
-                  style={{
-                    background: 'white',
-                    borderRadius: '15px',
-                    padding: '25px',
-                    boxShadow: '0 8px 25px rgba(0,0,0,0.1)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    height: '100%'
-                  }}
-                >
-                  <h5 style={{ 
-                    color: '#2c3e50', 
-                    marginBottom: '20px', 
-                    fontWeight: '700',
-                    borderBottom: '2px solid #4facfe',
-                    paddingBottom: '10px'
-                  }}>
-                    <i className="bi bi-cart-plus me-2"></i>
-                    Purchase Details
-                  </h5>
-                  <div style={{ marginBottom: '15px' }}>
-                    <strong style={{ color: '#34495e', fontSize: '14px' }}>Purchase Date:</strong>
-                    <div style={{ 
-                      fontSize: '16px', 
-                      fontWeight: '600', 
-                      color: '#4facfe',
-                      marginTop: '5px'
-                    }}>
-                      {new Date(viewingTrade.purchaseDate).toLocaleDateString()}
-                    </div>
-                  </div>
-                  <div style={{ marginBottom: '15px' }}>
-                    <strong style={{ color: '#34495e', fontSize: '14px' }}>Units Purchased:</strong>
-                    <div style={{ 
-                      fontSize: '16px', 
-                      fontWeight: '600', 
-                      color: '#4facfe',
-                      marginTop: '5px'
-                    }}>
-                      {viewingTrade.unitsPurchased}
-                    </div>
-                  </div>
-                  <div style={{ marginBottom: '15px' }}>
-                    <strong style={{ color: '#34495e', fontSize: '14px' }}>Purchase Rate:</strong>
-                    <div style={{ 
-                      fontSize: '16px', 
-                      fontWeight: '600', 
-                      color: '#4facfe',
-                      marginTop: '5px'
-                    }}>
-                      ₹{viewingTrade.purchaseRate}
-                    </div>
-                  </div>
-                  <div style={{ marginBottom: '0' }}>
-                    <strong style={{ color: '#34495e', fontSize: '14px' }}>Total Investment:</strong>
-                    <div style={{ 
-                      fontSize: '18px', 
-                      fontWeight: '700', 
-                      color: '#4facfe',
-                      marginTop: '5px',
-                      padding: '10px',
-                      background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
-                      borderRadius: '8px'
-                    }}>
-                      ₹{(viewingTrade.unitsPurchased * viewingTrade.purchaseRate).toFixed(2)}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Selling Details */}
-              <div className="col-md-6">
-                <div 
-                  style={{
-                    background: 'white',
-                    borderRadius: '15px',
-                    padding: '25px',
-                    boxShadow: '0 8px 25px rgba(0,0,0,0.1)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    height: '100%'
-                  }}
-                >
-                  <h5 style={{ 
-                    color: '#2c3e50', 
-                    marginBottom: '20px', 
-                    fontWeight: '700',
-                    borderBottom: '2px solid #ff6b6b',
-                    paddingBottom: '10px'
-                  }}>
-                    <i className="bi bi-cart-dash me-2"></i>
-                    Selling Details
-                  </h5>
-                  {viewingTrade.sellingDate ? (
-                    <>
-                      <div style={{ marginBottom: '15px' }}>
-                        <strong style={{ color: '#34495e', fontSize: '14px' }}>Selling Date:</strong>
-                        <div style={{ 
-                          fontSize: '16px', 
-                          fontWeight: '600', 
-                          color: '#ff6b6b',
-                          marginTop: '5px'
-                        }}>
-                          {new Date(viewingTrade.sellingDate).toLocaleDateString()}
-                        </div>
-                      </div>
-                      <div style={{ marginBottom: '15px' }}>
-                        <strong style={{ color: '#34495e', fontSize: '14px' }}>Units Sold:</strong>
-                        <div style={{ 
-                          fontSize: '16px', 
-                          fontWeight: '600', 
-                          color: '#ff6b6b',
-                          marginTop: '5px'
-                        }}>
-                          {viewingTrade.unitsSold || 0}
-                        </div>
-                      </div>
-                      <div style={{ marginBottom: '15px' }}>
-                        <strong style={{ color: '#34495e', fontSize: '14px' }}>Selling Price:</strong>
-                        <div style={{ 
-                          fontSize: '16px', 
-                          fontWeight: '600', 
-                          color: '#ff6b6b',
-                          marginTop: '5px'
-                        }}>
-                          ₹{viewingTrade.sellingPrice || 0}
-                        </div>
-                      </div>
-                      <div style={{ marginBottom: '0' }}>
-                        <strong style={{ color: '#34495e', fontSize: '14px' }}>Return:</strong>
-                        <div style={{ 
-                          fontSize: '18px', 
-                          fontWeight: '700', 
-                          color: (() => {
-                            if (!viewingTrade.sellingPrice || !viewingTrade.unitsSold) return '#6c757d';
-                            const purchaseCost = viewingTrade.unitsSold * viewingTrade.purchaseRate;
-                            const sellingAmount = viewingTrade.unitsSold * viewingTrade.sellingPrice;
-                            const returnAmount = sellingAmount - purchaseCost;
-                            return returnAmount >= 0 ? '#27ae60' : '#e74c3c';
-                          })(),
-                          marginTop: '5px',
-                          padding: '10px',
-                          background: (() => {
-                            if (!viewingTrade.sellingPrice || !viewingTrade.unitsSold) return 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)';
-                            const purchaseCost = viewingTrade.unitsSold * viewingTrade.purchaseRate;
-                            const sellingAmount = viewingTrade.unitsSold * viewingTrade.sellingPrice;
-                            const returnAmount = sellingAmount - purchaseCost;
-                            return returnAmount >= 0 
-                              ? 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%)' 
-                              : 'linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%)';
-                          })(),
-                          borderRadius: '8px'
-                        }}>
-                          {(() => {
-                            if (!viewingTrade.sellingPrice || !viewingTrade.unitsSold) return '₹0.00';
-                            const purchaseCost = viewingTrade.unitsSold * viewingTrade.purchaseRate;
-                            const sellingAmount = viewingTrade.unitsSold * viewingTrade.sellingPrice;
-                            const returnAmount = sellingAmount - purchaseCost;
-                            return (returnAmount >= 0 ? '+' : '') + '₹' + returnAmount.toFixed(2);
-                          })()} 
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <div style={{ 
-                      textAlign: 'center', 
-                      color: '#7f8c8d', 
-                      fontSize: '16px',
-                      fontStyle: 'italic',
-                      padding: '40px 20px'
-                    }}>
-                      <i className="bi bi-hourglass-split" style={{ fontSize: '24px', marginBottom: '10px', display: 'block' }}></i>
-                      Not sold yet
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
+          <TradeDetailsContent viewingTrade={viewingTrade} stockSymbols={stockSymbols} />
         </Modal.Body>
-        <Modal.Footer 
+        <Modal.Footer
           style={{
             background: 'white',
             border: 'none',
@@ -1120,165 +1250,9 @@ export default function TradesManagement() {
         </Modal.Footer>
       </Modal>
 
-      {/* Add Trade Modal */}
-      <Modal show={showModal} onHide={() => setShowModal(false)} size="lg">
-        <Modal.Header closeButton>
-          <Modal.Title>{editingTrade ? 'Edit Trade' : 'Add New Trade'}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form onSubmit={handleSubmit}>
-            <Row>
 
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Stock Name *</Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={formData.stockName}
-                    onChange={(e) => setFormData({...formData, stockName: e.target.value})}
-                    required
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Purchase Rate (₹) *</Form.Label>
-                  <Form.Control
-                    type="number"
-                    step="0.01"
-                    value={formData.purchaseRate}
-                    onChange={(e) => setFormData({...formData, purchaseRate: e.target.value})}
-                    required
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Units Purchased *</Form.Label>
-                  <Form.Control
-                    type="number"
-                    step="1"
-                    min="1"
-                    value={formData.unitsPurchased}
-                    onChange={(e) => setFormData({...formData, unitsPurchased: e.target.value})}
-                    required
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Purchase Date *</Form.Label>
-                  <Form.Control
-                    type="date"
-                    value={formData.purchaseDate}
-                    onChange={(e) => setFormData({...formData, purchaseDate: e.target.value})}
-                    required
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Selling Price (₹)</Form.Label>
-                  <Form.Control
-                    type="number"
-                    step="0.01"
-                    value={formData.sellingPrice}
-                    onChange={(e) => setFormData({...formData, sellingPrice: e.target.value})}
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Selling Date</Form.Label>
-                  <Form.Control
-                    type="date"
-                    value={formData.sellingDate}
-                    onChange={(e) => setFormData({...formData, sellingDate: e.target.value})}
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Units Sold</Form.Label>
-                  <Form.Control
-                    type="number"
-                    step="1"
-                    min="0"
-                    value={formData.unitsSold}
-                    onChange={(e) => setFormData({...formData, unitsSold: e.target.value})}
-                    isInvalid={formData.unitsSold && formData.unitsPurchased && parseInt(formData.unitsSold) > parseInt(formData.unitsPurchased)}
-                  />
-                  <Form.Control.Feedback type="invalid">
-                    Units sold cannot be greater than units purchased ({formData.unitsPurchased})
-                  </Form.Control.Feedback>
-                </Form.Group>
-              </Col>
-            </Row>
-            <div className="d-flex justify-content-end gap-2">
-              <Button variant="secondary" onClick={() => setShowModal(false)}>
-                Cancel
-              </Button>
-              <Button 
-                variant="primary" 
-                type="submit"
-                disabled={formData.unitsSold && formData.unitsPurchased && parseInt(formData.unitsSold) > parseInt(formData.unitsPurchased)}
-              >
-                {editingTrade ? 'Update Trade' : 'Add Trade'}
-              </Button>
-            </div>
-          </Form>
-        </Modal.Body>
-      </Modal>
 
-      {/* Delete Confirmation Modal */}
-      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Confirm Delete</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <div className="text-center">
-            <div 
-              className="rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
-              style={{
-                width: '60px',
-                height: '60px',
-                background: 'rgba(220, 53, 69, 0.1)',
-                color: '#dc3545'
-              }}
-            >
-              <i className="bi bi-exclamation-triangle fs-3"></i>
-            </div>
-            <h5 className="mb-3">Delete Trade</h5>
-            <p className="text-muted mb-0">
-              Are you sure you want to delete this trade for{' '}
-              <strong>{tradeToDelete?.stockName}</strong>?
-            </p>
-            <p className="text-muted small">
-              This action cannot be undone.
-            </p>
-          </div>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button 
-            variant="secondary" 
-            onClick={() => setShowDeleteModal(false)}
-          >
-            Cancel
-          </Button>
-          <Button 
-            variant="danger" 
-            onClick={handleDeleteTrade}
-          >
-            Delete Trade
-          </Button>
-        </Modal.Footer>
-      </Modal>
+
     </div>
   )
 }

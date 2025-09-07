@@ -117,8 +117,11 @@ const InvestmentManagement = () => {
       const data = await response.json()
 
       if (response.ok) {
+        console.log('Search API response:', data) // Debug log
         if (data && (Array.isArray(data) ? data.length > 0 : data._id)) {
-          setSearchResult(Array.isArray(data) ? data[0] : data)
+          const userData = Array.isArray(data) ? data[0] : data
+          console.log('Setting search result:', userData) // Debug log
+          setSearchResult(userData)
         } else {
           setError('No user found with the provided search term')
         }
@@ -191,7 +194,26 @@ const InvestmentManagement = () => {
 
       if (response.ok) {
         setMessage(`${modalType === 'add' ? 'Money added' : 'Money withdrawn'} successfully!`)
-        setSearchResult(data.user)
+        
+        // Update user data with the response
+        const updatedUser = data.user
+        console.log('Updated user data:', updatedUser) // Debug log
+        
+        // Refresh current NAV first to ensure accurate calculations
+        await fetchCurrentNAV()
+        
+        // Update search result with fresh data
+        setSearchResult(updatedUser)
+        
+        // Force UI re-render by triggering state update
+        setTimeout(() => {
+          // This ensures all calculated values refresh properly
+          setSearchResult(prevResult => ({ 
+            ...updatedUser, 
+            _forceUpdate: Date.now() 
+          }))
+        }, 100)
+        
         handleModalClose()
       } else {
         setError(data.error || `Failed to ${modalType === 'add' ? 'add money' : 'withdraw money'}`)
@@ -393,7 +415,7 @@ const InvestmentManagement = () => {
                         <div className="d-flex align-items-center">
                           <span className="me-2">📅</span>
                           <span style={{ fontWeight: '500' }}>
-                            {searchResult.dateOfJoining ? format(new Date(searchResult.dateOfJoining), 'MMM yyyy') : 'N/A'}
+                            {searchResult.dateOfJoining ? format(new Date(searchResult.dateOfJoining), 'dd MMM yyyy') : 'N/A'}
                           </span>
                         </div>
                       </div>

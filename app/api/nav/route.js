@@ -11,11 +11,10 @@ export async function GET(request) {
     const navs = await NAV.find({})
       .populate('updatedBy', 'firstName lastName')
       .sort({ date: -1 })
-      .limit(30)
-
-    return NextResponse.json({ navs })
+    
+    return NextResponse.json({ navs: navs })
   } catch (error) {
-    console.error('Get NAV error:', error)
+    console.error('Fetch NAV error:', error)
     return NextResponse.json(
       { message: 'Internal server error' },
       { status: 500 }
@@ -38,7 +37,7 @@ export async function POST(request) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
     }
     
-    const { date, value, updatedBy } = await request.json()
+    const { date, value } = await request.json()
 
     if (!date || !value) {
       return NextResponse.json(
@@ -48,6 +47,8 @@ export async function POST(request) {
     }
 
     const navDate = new Date(date)
+    navDate.setHours(0, 0, 0, 0) // Normalize to start of day
+    
     const existingNAV = await NAV.findOne({ date: navDate })
 
     if (existingNAV) {
@@ -88,32 +89,44 @@ export async function DELETE(request) {
   try {
     await dbConnect()
     
+    // Verify authentication
+    const token = getTokenFromRequest(request)
+    if (!token) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+    }
+
+    const decoded = verifyToken(token)
+    if (!decoded || decoded.role !== 'admin') {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+    }
+    
     const { searchParams } = new URL(request.url)
-    const navId = searchParams.get('navId')
+    const id = searchParams.get('id')
     
-    console.log('Delete request received for navId:', navId)
-
-    if (!navId) {
-      console.log('No navId provided')
-      return NextResponse.json({ message: 'NAV ID is required' }, { status: 400 })
+    if (!id) {
+      return NextResponse.json(
+        { message: 'NAV ID is required' },
+        { status: 400 }
+      )
     }
-
-    const nav = await NAV.findById(navId)
-    console.log('Found NAV record:', nav)
     
-    if (!nav) {
-      console.log('NAV not found for ID:', navId)
-      return NextResponse.json({ message: 'NAV not found' }, { status: 404 })
+    const deletedNAV = await NAV.findByIdAndDelete(id)
+    
+    if (!deletedNAV) {
+      return NextResponse.json(
+        { message: 'NAV not found' },
+        { status: 404 }
+      )
     }
-
-    const deletedNav = await NAV.findByIdAndDelete(navId)
-    console.log('NAV deleted successfully:', deletedNav)
-
-    return NextResponse.json({ message: 'NAV deleted successfully' })
+    
+    return NextResponse.json({ 
+      message: 'NAV deleted successfully',
+      nav: deletedNAV 
+    })
   } catch (error) {
     console.error('Delete NAV error:', error)
     return NextResponse.json(
-      { message: `Internal server error: ${error.message}` },
+      { message: 'Internal server error' },
       { status: 500 }
     )
   }

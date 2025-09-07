@@ -4,7 +4,9 @@ import dbConnect from '../../../../lib/mongodb'
 import User from '../../../../models/User'
 import NAV from '../../../../models/NAV'
 import Transaction from '../../../../models/Transaction'
+import CurrentValue from '../../../../models/CurrentValue'
 import { verifyToken, getTokenFromRequest } from '../../../../utils/auth'
+import { addUnits } from '../../../../utils/unitManager'
 
 export async function POST(request) {
   try {
@@ -51,12 +53,14 @@ export async function POST(request) {
     // Calculate units to add based on current NAV
     const unitsToAdd = amount / currentNAV.value
     
-    // Update user investment data
-    user.investedAmount = (user.investedAmount || 0) + amount
-    user.units = (user.units || 0) + unitsToAdd
-    // currentValue is now calculated dynamically: units * NAV
-    
-    await user.save()
+    // Update user investment data using unitManager
+    await addUnits(user._id, unitsToAdd, amount)
+
+    // Update current value by adding the investment amount
+    await CurrentValue.addToCurrentValue(amount, 'investment', `Investment of ${amount} added by admin for user ${user.userCode}`)
+
+    // Fetch updated user data to ensure accurate values
+    const updatedUser = await User.findById(userId)
 
     // Get admin user details for transaction record
     const adminUser = await User.findById(decoded.userId)
@@ -81,13 +85,15 @@ export async function POST(request) {
     return NextResponse.json({ 
       message: 'Money added successfully',
       user: {
-        _id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        investedAmount: user.investedAmount,
-        units: user.units,
-        currentValue: user.units * currentNAV.value // Calculate dynamically
+        _id: updatedUser._id,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+        email: updatedUser.email,
+        userCode: updatedUser.userCode,
+        dateOfJoining: updatedUser.dateOfJoining,
+        investedAmount: updatedUser.investedAmount,
+        units: updatedUser.units,
+        currentValue: updatedUser.units * currentNAV.value
       },
       transaction: {
         amount: amount,

@@ -2,8 +2,9 @@
 import { useState } from 'react'
 import { Card, Table, Form, InputGroup, Badge } from 'react-bootstrap'
 import { format } from 'date-fns'
+import StockDisplay from './StockDisplay'
 
-export default function TradesTable({ trades }) {
+export default function TradesTable({ trades, stockSymbols = {} }) {
   const [searchTerm, setSearchTerm] = useState('')
   const [sortField, setSortField] = useState('')
   const [sortDirection, setSortDirection] = useState('asc')
@@ -225,7 +226,16 @@ export default function TradesTable({ trades }) {
                     e.currentTarget.style.transform = 'scale(1)'
                   }}
                 >
-                  <td className="fw-semibold" style={{ padding: '16px 20px', border: 'none', color: '#2c3e50' }}>{trade.stockName}</td>
+                  <td className="fw-semibold" style={{ padding: '16px 20px', border: 'none', color: '#2c3e50' }}>
+                    <div className="d-flex align-items-center justify-content-center">
+                      <StockDisplay 
+                        stockName={trade.stockName}
+                        stockSymbol={stockSymbols[trade.stockName]}
+                        size="lg"
+                        showName={true}
+                      />
+                    </div>
+                  </td>
                   <td style={{ padding: '16px 20px', border: 'none' }}>₹{trade.purchaseRate.toFixed(2)}</td>
                   <td style={{ padding: '16px 20px', border: 'none' }}>{format(new Date(trade.purchaseDate), 'dd MMM yyyy')}</td>
                   <td style={{ padding: '16px 20px', border: 'none' }}>{trade.unitsPurchased.toLocaleString()}</td>

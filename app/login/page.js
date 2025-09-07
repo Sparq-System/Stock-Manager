@@ -251,7 +251,7 @@ export default function Login() {
                 </Form>
 
                 {/* Demo Credentials */}
-                <div className="mt-4 p-3" style={{
+                {/* <div className="mt-4 p-3" style={{
                   background: 'rgba(13, 110, 253, 0.05)',
                   borderRadius: '12px',
                   border: '1px solid rgba(13, 110, 253, 0.1)'
@@ -266,7 +266,7 @@ export default function Login() {
                   <small className="text-muted d-block">
                     <strong>Client:</strong> adi@demo.com / 123456
                   </small>
-                </div>
+                </div> */}
               </Card.Body>
             </Card>
           </Col>

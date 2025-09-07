@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 import dbConnect from '../../../../lib/mongodb'
 import User from '../../../../models/User'
+import CurrentValue from '../../../../models/CurrentValue'
 import { verifyToken, getTokenFromRequest } from '../../../../utils/auth'
+import { addUnits, subtractUnits, calculateUnitsFromInvestment, calculateInvestmentFromUnits } from '../../../../utils/unitManager'
 
 export async function PATCH(request) {
   try {
@@ -41,37 +43,52 @@ export async function PATCH(request) {
 
     let updatedUser
     if (action === 'add') {
+      // Calculate units based on investment amount and current NAV
+      const calculatedUnits = units ? parseFloat(units) : await calculateUnitsFromInvestment(amountValue)
+      
+      // Add units using the unit manager (this will update both user units and total units)
+      await addUnits(userId, calculatedUnits, amountValue)
+      
+      // Update current value by adding the investment amount
+      await CurrentValue.addToCurrentValue(amountValue, 'investment', `Investment of ${amountValue} added for user ${user.userCode}`)
+      
+      // Update user's invested amount
       updatedUser = await User.findByIdAndUpdate(
         userId,
         {
           $inc: {
-            investedAmount: amountValue,
-            units: unitsValue
+            investedAmount: amountValue
           },
           $set: {
-            currentValue: user.investedAmount + amountValue, // For now, current value equals invested amount
             updatedAt: new Date()
           }
         },
         { new: true, select: '-password' }
       )
     } else { // withdraw
+      const withdrawUnits = units ? parseFloat(units) : await calculateUnitsFromInvestment(amountValue)
+      
       if (user.investedAmount < amountValue) {
         return NextResponse.json({ message: 'Insufficient invested amount' }, { status: 400 })
       }
-      if (user.units < unitsValue) {
+      if (user.units < withdrawUnits) {
         return NextResponse.json({ message: 'Insufficient units' }, { status: 400 })
       }
 
+      // Subtract units using the unit manager (this will update both user units and total units)
+      await subtractUnits(userId, withdrawUnits, amountValue)
+      
+      // Update current value by subtracting the withdrawal amount
+      await CurrentValue.subtractFromCurrentValue(amountValue, 'withdrawal', `Withdrawal of ${amountValue} for user ${user.userCode}`)
+      
+      // Update user's invested amount
       updatedUser = await User.findByIdAndUpdate(
         userId,
         {
           $inc: {
-            investedAmount: -amountValue,
-            units: -unitsValue
+            investedAmount: -amountValue
           },
           $set: {
-            currentValue: Math.max(0, user.investedAmount - amountValue),
             updatedAt: new Date()
           }
         },

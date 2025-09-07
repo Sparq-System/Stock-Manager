@@ -35,6 +35,16 @@ const TradeSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  partialProfitLoss: {
+    type: Number,
+    default: 0,
+    comment: 'Cumulative profit/loss from partial sales'
+  },
+  finalProfitLoss: {
+    type: Number,
+    default: null,
+    comment: 'Final profit/loss when trade is fully closed'
+  },
   status: {
     type: String,
     enum: ['active', 'sold', 'partial'],
