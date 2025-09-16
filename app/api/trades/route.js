@@ -82,7 +82,8 @@ async function recalculateHoldingAfterDeletion(userId, stockName) {
       // Trigger NAV recalculation if needed
       try {
         if (shouldRecalculateNAV(existingHolding)) {
-          await calculateAndUpdateNAV(userId)
+          const description = `Trade deletion recalculation for ${stockName}`
+          await calculateAndUpdateNAV(userId, 'manual', description)
           console.log('NAV updated after holding recalculation')
         }
       } catch (navError) {
@@ -105,7 +106,8 @@ async function recalculateHoldingAfterDeletion(userId, stockName) {
       // Trigger NAV recalculation for new holding
       try {
         if (shouldRecalculateNAV(newHolding)) {
-          await calculateAndUpdateNAV(userId)
+          const description = `New holding created for ${stockName} after trade deletion`
+          await calculateAndUpdateNAV(userId, 'manual', description)
           console.log('NAV updated after new holding creation')
         }
       } catch (navError) {

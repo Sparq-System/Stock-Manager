@@ -704,26 +704,6 @@ export default function BuySellPage() {
                             ) : (
                               <div>
                                 <h4 style={{ margin: '0', fontWeight: '700' }}>₹{currentValue.toLocaleString()}</h4>
-                                {currentValue === 0 && (
-                                  <Button 
-                                    size="sm" 
-                                    variant="light" 
-                                    onClick={initializeCurrentValue}
-                                    disabled={currentValueLoading}
-                                    style={{ 
-                                      marginTop: '8px',
-                                      fontSize: '12px',
-                                      padding: '4px 12px',
-                                      borderRadius: '8px',
-                                      background: 'rgba(255,255,255,0.3)',
-                                      border: '1px solid rgba(255,255,255,0.4)',
-                                      color: 'white'
-                                    }}
-                                  >
-                                    <i className="bi bi-arrow-clockwise me-1"></i>
-                                    Initialize
-                                  </Button>
-                                )}
                               </div>
                             )}
                           </div>

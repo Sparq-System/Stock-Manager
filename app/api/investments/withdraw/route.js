@@ -6,7 +6,7 @@ import NAV from '../../../../models/NAV'
 import Transaction from '../../../../models/Transaction'
 import CurrentValue from '../../../../models/CurrentValue'
 import { verifyToken, getTokenFromRequest } from '../../../../utils/auth'
-import { subtractUnits } from '../../../../utils/unitManager'
+import { updatePortfolioTotalsFromAggregation } from '../../../../utils/unitManager'
 
 export async function POST(request) {
   try {
@@ -75,6 +75,17 @@ export async function POST(request) {
       withdrawAmount = units * currentNAV.value
     }
 
+    // Get current value to validate withdrawal amount
+    const currentValue = await CurrentValue.getCurrentValue()
+    
+    // Check if withdrawal amount exceeds current value
+    if (withdrawAmount > currentValue) {
+      return NextResponse.json(
+        { message: 'Withdrawal amount exceeds current value' },
+        { status: 400 }
+      )
+    }
+    
     // Check if user has sufficient units
     const currentUnits = user.units || 0
     if (unitsToWithdraw > currentUnits) {
@@ -84,11 +95,27 @@ export async function POST(request) {
       )
     }
 
-    // Update user investment data using unitManager
-    await subtractUnits(user._id, unitsToWithdraw, withdrawAmount)
+    // Update user units
+    const newUnits = user.units - unitsToWithdraw
+    
+    // Update invested amount, ensuring it doesn't go below 0
+    const newInvestedAmount = Math.max(0, user.investedAmount - withdrawAmount)
+    
+    // Update user data
+    await User.findByIdAndUpdate(
+      user._id,
+      { 
+        units: newUnits,
+        investedAmount: newInvestedAmount
+      },
+      { new: true }
+    )
 
     // Update current value by subtracting the withdrawal amount
     await CurrentValue.subtractFromCurrentValue(withdrawAmount, 'withdrawal', `Withdrawal of ${withdrawAmount} processed by admin for user ${user.userCode}`)
+    
+    // Update portfolio totals to maintain consistency
+    await updatePortfolioTotalsFromAggregation()
 
     // Fetch updated user data to ensure accurate values
     const updatedUser = await User.findById(userId)

@@ -199,17 +199,19 @@ export async function POST(request) {
         }
       }
 
-      // Calculate total profit/loss from all affected trades
-      let totalProfitLoss = 0
-      for (const trade of activeTrades) {
-        if (trade.status === 'sold' && trade.finalProfitLoss !== null) {
-          totalProfitLoss += trade.finalProfitLoss
-        } else if (trade.status === 'partial' && trade.partialProfitLoss !== null) {
-          totalProfitLoss += trade.partialProfitLoss
-        }
-      }
+      // Calculate profit/loss from this specific sale transaction
+      const saleAmount = parseFloat(sellingPrice) * parseInt(unitsSold)
+      const avgCostBasis = holding.avgPrice * parseInt(unitsSold)
+      const transactionProfitLoss = saleAmount - avgCostBasis
       
-      console.log(`Total profit/loss from sale: ${totalProfitLoss}`)
+      console.log(`Sale transaction profit/loss: ${transactionProfitLoss} (Sale: ${saleAmount}, Cost: ${avgCostBasis})`)
+      
+      // Immediately update CurrentValue with profit/loss from this partial sale
+      if (transactionProfitLoss > 0) {
+        await CurrentValue.addToCurrentValue(transactionProfitLoss, 'stock_sale_profit', `Profit of ₹${transactionProfitLoss.toFixed(2)} from selling ${unitsSold} units of ${holding.stockName} at ₹${sellingPrice} per unit`)
+      } else if (transactionProfitLoss < 0) {
+        await CurrentValue.subtractFromCurrentValue(Math.abs(transactionProfitLoss), 'stock_sale_loss', `Loss of ₹${Math.abs(transactionProfitLoss).toFixed(2)} from selling ${unitsSold} units of ${holding.stockName} at ₹${sellingPrice} per unit`)
+      }
       
       // Update portfolio totals to reflect the change
       const { updatePortfolioTotalsFromAggregation } = await import('../../../utils/unitManager')
@@ -233,26 +235,17 @@ export async function POST(request) {
       // Update status if fully sold
       if (holding.remainingUnits === 0) {
         holding.status = 'sold'
-        
-        // Calculate final profit/loss for the entire position
-        const finalProfitLoss = holding.totalRealized - holding.totalInvestment
-        
-        // Update current value with the final profit/loss
-        if (finalProfitLoss > 0) {
-          await CurrentValue.addToCurrentValue(finalProfitLoss, 'stock_sale_profit', `Profit of ${finalProfitLoss} from fully selling ${holding.stockName}`)
-        } else if (finalProfitLoss < 0) {
-          await CurrentValue.subtractFromCurrentValue(Math.abs(finalProfitLoss), 'stock_sale_loss', `Loss of ${Math.abs(finalProfitLoss)} from fully selling ${holding.stockName}`)
-        }
+        console.log(`Holding ${holding.stockName} fully sold. Total realized: ₹${holding.totalRealized}, Total investment: ₹${holding.totalInvestment}`)
+        // Note: Profit/loss is already accounted for in individual transactions above
       }
 
       await holding.save()
 
-      // Trigger NAV recalculation if needed
+      // Always trigger NAV recalculation after any sale transaction
       try {
-        if (shouldRecalculateNAV(holding)) {
-          await calculateAndUpdateNAV(decoded.userId)
-          console.log('NAV updated after stock sale')
-        }
+        const description = `Stock sale: ${unitsSold} units of ${holding.stockName} at ₹${sellingPrice} per unit (P/L: ₹${transactionProfitLoss.toFixed(2)})`
+        await calculateAndUpdateNAV(decoded.userId, 'stock_sale', description)
+        console.log('NAV updated after stock sale transaction')
       } catch (navError) {
         console.error('Error updating NAV after sale:', navError)
         // Don't fail the sale if NAV update fails

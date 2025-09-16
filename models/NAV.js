@@ -4,7 +4,7 @@ const NAVSchema = new mongoose.Schema({
   date: {
     type: Date,
     required: true,
-    unique: true
+    index: true
   },
   value: {
     type: Number,
@@ -14,6 +14,15 @@ const NAVSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
+  },
+  reason: {
+    type: String,
+    enum: ['daily_calculation', 'stock_sale', 'investment', 'withdrawal', 'manual'],
+    default: 'daily_calculation'
+  },
+  description: {
+    type: String,
+    default: ''
   }
 }, {
   timestamps: true,
