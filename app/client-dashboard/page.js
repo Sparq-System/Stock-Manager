@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { Container, Row, Col } from 'react-bootstrap'
 import Navbar from '../../components/Navbar'
 import SummaryCards from '../../components/SummaryCards'
-import ReturnChart from '../../components/ReturnChart'
+import NAVChart from '../../components/NAVChart'
 import InvestmentVsCurrentChart from '../../components/InvestmentVsCurrentChart'
 
 export default function ClientDashboard() {
@@ -50,8 +50,8 @@ export default function ClientDashboard() {
       
       if (response.ok) {
         const userData = await response.json()
-        setUser(userData)
-        return userData
+        setUser(userData.user)
+        return userData.user
       } else if (response.status === 401) {
         console.error('Authentication failed, redirecting to login')
         window.location.href = '/login'
@@ -331,7 +331,7 @@ export default function ClientDashboard() {
 
         <Row className="g-4 mb-5">
           <Col lg={8}>
-            <ReturnChart holdings={holdings} />
+            <NAVChart />
           </Col>
           <Col lg={4}>
             <div 

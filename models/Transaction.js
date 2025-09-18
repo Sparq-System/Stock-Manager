@@ -73,7 +73,7 @@ const TransactionSchema = new mongoose.Schema({
 })
 
 // Index for better search performance
-TransactionSchema.index({ transactionId: 1 })
+// transactionId index is automatically created by unique: true constraint
 TransactionSchema.index({ userId: 1 })
 TransactionSchema.index({ userCode: 1 })
 TransactionSchema.index({ type: 1 })

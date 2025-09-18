@@ -4,13 +4,40 @@ import Holding from '../models/Holding'
 import PortfolioTotals from '../models/PortfolioTotals'
 import CurrentValue from '../models/CurrentValue'
 
+const updateNAV = async (userId, reason = 'daily_calculation', description = '') => {
+  try {
+    // Get current value
+    const currentValue = await CurrentValue.findOne({ userId });
+    if (!currentValue) {
+      throw new Error('Current value not found for user');
+    }
+
+    // Create new NAV record for each change
+    const nav = new NAV({
+      date: new Date(),
+      value: currentValue.currentValue,
+      updatedBy: userId,
+      reason: reason,
+      description: description
+    });
+
+    await nav.save();
+    return nav;
+  } catch (error) {
+    console.error('Error updating NAV:', error);
+    throw error;
+  }
+};
+
 /**
  * Calculate and update NAV automatically
  * NAV = Total Portfolio Valuation / Total Units
  * @param {string} updatedBy - User ID who triggered the NAV update
+ * @param {string} reason - Reason for NAV update
+ * @param {string} description - Description of the NAV change
  * @returns {Promise<Object>} Updated NAV record
  */
-export async function calculateAndUpdateNAV(updatedBy) {
+export async function calculateAndUpdateNAV(updatedBy, reason = 'daily_calculation', description = '') {
   try {
     await dbConnect()
 
@@ -35,36 +62,16 @@ export async function calculateAndUpdateNAV(updatedBy) {
     // Calculate new NAV
     const newNAV = currentValue / totalUnits
 
-    // Check if NAV already exists for today (using date range for daily uniqueness)
-    const today = new Date()
-    const startOfDay = new Date(today)
-    startOfDay.setHours(0, 0, 0, 0)
-    const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000)
-    
-    const existingNAV = await NAV.findOne({
-      date: {
-        $gte: startOfDay,
-        $lt: endOfDay
-      }
+    // Always create new NAV record to track all changes
+    const navRecord = await NAV.create({
+      date: new Date(),
+      value: newNAV,
+      updatedBy: updatedBy,
+      reason: reason,
+      description: description
     })
 
-    let navRecord
-    if (existingNAV) {
-      // Update existing NAV for today with current timestamp
-      existingNAV.value = newNAV
-      existingNAV.date = new Date() // Store full timestamp
-      existingNAV.updatedBy = updatedBy
-      navRecord = await existingNAV.save()
-    } else {
-      // Create new NAV record with current timestamp
-      navRecord = await NAV.create({
-        date: new Date(), // Store full timestamp instead of midnight
-        value: newNAV,
-        updatedBy: updatedBy
-      })
-    }
-
-    console.log(`NAV updated: ${newNAV.toFixed(4)} (Current Value: ${currentValue.toFixed(2)}, Total Units: ${totalUnits.toFixed(2)})`)
+    console.log(`NAV updated: ${newNAV.toFixed(4)} (Current Value: ${currentValue.toFixed(2)}, Total Units: ${totalUnits.toFixed(2)}) - Reason: ${reason}`)
     
     return navRecord
   } catch (error) {

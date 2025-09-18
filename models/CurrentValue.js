@@ -13,7 +13,7 @@ const CurrentValueSchema = new mongoose.Schema({
   },
   updatedBy: {
     type: String,
-    enum: ['investment', 'withdrawal', 'trade_completion', 'manual', 'stock_sale_profit'],
+    enum: ['investment', 'withdrawal', 'trade_completion', 'manual', 'stock_sale_profit', 'stock_sale_loss'],
     required: true
   },
   description: {
