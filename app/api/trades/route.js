@@ -238,12 +238,30 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url)
     const all = searchParams.get('all')
+    const stockName = searchParams.get('stockName')
+    const purchaseDate = searchParams.get('purchaseDate')
 
     let trades
     if (all && decoded.role === 'admin') {
       trades = await Trade.find({}).populate('userId', 'firstName lastName email')
     } else {
-      trades = await Trade.find({ userId: decoded.userId })
+      // Build query based on parameters
+      let query = { userId: decoded.userId }
+      
+      // Add filtering for specific stock and purchase date if provided
+      if (stockName) {
+        query.stockName = stockName
+      }
+      if (purchaseDate) {
+        query.purchaseDate = new Date(purchaseDate)
+      }
+      
+      trades = await Trade.find(query)
+    }
+
+    // If requesting specific stock and purchase date, return array directly for easier processing
+    if (stockName && purchaseDate) {
+      return NextResponse.json(trades)
     }
 
     return NextResponse.json({ trades })

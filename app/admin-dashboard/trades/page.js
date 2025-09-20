@@ -8,6 +8,7 @@ import StockDisplay from '../../../components/StockDisplay'
 
 const TradeDetailsContent = ({ viewingTrade }) => {
   const [stockSymbol, setStockSymbol] = useState(null)
+  const [partialSales, setPartialSales] = useState([])
   
   useEffect(() => {
     const fetchSymbol = async () => {
@@ -31,12 +32,99 @@ const TradeDetailsContent = ({ viewingTrade }) => {
     
     fetchSymbol()
   }, [viewingTrade?.stockName])
+
+  useEffect(() => {
+    const fetchPartialSales = async () => {
+      if (viewingTrade?.stockName && viewingTrade?.purchaseDate) {
+        try {
+          console.log('🔍 Fetching trades for:', {
+            stockName: viewingTrade.stockName,
+            purchaseDate: viewingTrade.purchaseDate
+          })
+          
+          // Use the viewingTrade directly if it has partialSales
+          if (viewingTrade.partialSales && Array.isArray(viewingTrade.partialSales) && viewingTrade.partialSales.length > 0) {
+            console.log('🔍 Using partialSales from viewingTrade:', viewingTrade.partialSales)
+            console.log('🔍 Sample partial sale structure:', viewingTrade.partialSales[0])
+            setPartialSales(viewingTrade.partialSales.sort((a, b) => new Date(a.sellingDate) - new Date(b.sellingDate)))
+            return
+          }
+          
+          // Fallback: fetch from API
+          const response = await fetch(`/api/trades?stockName=${encodeURIComponent(viewingTrade.stockName)}&purchaseDate=${viewingTrade.purchaseDate}`)
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`)
+          }
+          const data = await response.json()
+          console.log('Fetched trades data:', data) // Debug log
+          
+          // The API now returns an array directly when filtering by stockName and purchaseDate
+          const relatedTrades = Array.isArray(data) ? data : (data.trades || [])
+          
+          // Find the specific trade that matches our viewing trade
+          console.log('🔍 Looking for trade with:', {
+            stockName: viewingTrade.stockName,
+            purchaseDate: viewingTrade.purchaseDate,
+            viewingTradeId: viewingTrade._id || viewingTrade.id
+          })
+          console.log('🔍 Available trades:', relatedTrades.map(t => ({
+            id: t._id,
+            stockName: t.stockName,
+            purchaseDate: t.purchaseDate,
+            partialSalesCount: t.partialSales?.length || 0
+          })))
+          
+          const matchingTrade = relatedTrades.find(trade => 
+            trade.stockName === viewingTrade.stockName && 
+            new Date(trade.purchaseDate).toDateString() === new Date(viewingTrade.purchaseDate).toDateString()
+          )
+          
+          console.log('🔍 Matching trade found:', matchingTrade) // Debug log
+          
+          if (matchingTrade && matchingTrade.partialSales && matchingTrade.partialSales.length > 0) {
+            console.log('🔍 Partial sales from trade:', matchingTrade.partialSales) // Debug log
+            console.log('🔍 Sample partial sale structure:', matchingTrade.partialSales[0]) // Debug log
+            setPartialSales(matchingTrade.partialSales.sort((a, b) => new Date(a.sellingDate) - new Date(b.sellingDate)))
+          } else {
+            console.log('🔍 No partial sales found in trade') // Debug log
+            setPartialSales([])
+          }
+        } catch (error) {
+          console.error('Error fetching partial sales:', error)
+          setPartialSales([])
+        }
+      } else {
+        console.log('Missing trade data:', { stockName: viewingTrade?.stockName, purchaseDate: viewingTrade?.purchaseDate }) // Debug log
+        setPartialSales([])
+      }
+    }
+    
+    fetchPartialSales()
+  }, [viewingTrade?.stockName, viewingTrade?.purchaseDate, viewingTrade?.id])
   
   if (!viewingTrade) return null;
+
+  // Calculate summary data
+  const totalUnitsSold = partialSales.reduce((sum, sale) => sum + sale.unitsSold, 0)
+  const totalSaleAmount = partialSales.reduce((sum, sale) => sum + (sale.unitsSold * sale.sellingPrice), 0)
+  const totalCostOfSoldUnits = partialSales.reduce((sum, sale) => sum + (sale.unitsSold * viewingTrade.purchaseRate), 0)
+  const totalProfit = totalSaleAmount - totalCostOfSoldUnits
+  const remainingUnits = viewingTrade.unitsPurchased - totalUnitsSold
+  const averageSellingPrice = totalUnitsSold > 0 ? totalSaleAmount / totalUnitsSold : 0
+  
+  // Debug logging
+  console.log('=== POPUP DEBUG INFO ===')
+  console.log('viewingTrade:', viewingTrade)
+  console.log('partialSales:', partialSales)
+  console.log('totalUnitsSold:', totalUnitsSold)
+  console.log('totalSaleAmount:', totalSaleAmount)
+  console.log('totalProfit:', totalProfit)
+  console.log('remainingUnits:', remainingUnits)
+  console.log('========================')
   
   return (
     <div className="row g-4">
-      {/* Stock Information */}
+      {/* Stock Information Header */}
       <div className="col-12">
         <div 
           style={{
@@ -57,12 +145,12 @@ const TradeDetailsContent = ({ viewingTrade }) => {
               color: 'white', 
               margin: '0', 
               fontWeight: '700',
-              fontSize: '16px',
+              fontSize: '18px',
               display: 'flex',
               alignItems: 'center'
             }}>
-              <i className="bi bi-building me-2" style={{ fontSize: '18px' }}></i>
-              Stock Information
+              <i className="bi bi-graph-up-arrow me-2" style={{ fontSize: '20px' }}></i>
+              Trade Overview
             </h5>
           </div>
           <div style={{
@@ -70,7 +158,7 @@ const TradeDetailsContent = ({ viewingTrade }) => {
             padding: '25px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '20px' }}>
-              {/* Stock Display with Image, Symbol, and Company Name */}
+              {/* Stock Display */}
               <div style={{ flex: '1', minWidth: '200px' }}>
                 <StockDisplay 
                   stockName={viewingTrade.stockName}
@@ -80,69 +168,37 @@ const TradeDetailsContent = ({ viewingTrade }) => {
                 />
               </div>
               
-              {/* Status Information */}
+              {/* Status and Summary */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'flex-end' }}>
-                {/* Trade Status */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '14px', color: '#6c757d', fontWeight: '500' }}>Status:</span>
                   <span style={{
-                    padding: '4px 12px',
+                    padding: '6px 16px',
                     borderRadius: '20px',
-                    fontSize: '12px',
+                    fontSize: '13px',
                     fontWeight: '600',
                     textTransform: 'capitalize',
-                    backgroundColor: (() => {
-                      switch(viewingTrade.status) {
-                        case 'active': return '#e3f2fd';
-                        case 'partial': return '#fff3e0';
-                        case 'sold': return '#e8f5e8';
-                        default: return '#f5f5f5';
-                      }
-                    })(),
-                    color: (() => {
-                      switch(viewingTrade.status) {
-                        case 'active': return '#1976d2';
-                        case 'partial': return '#f57c00';
-                        case 'sold': return '#388e3c';
-                        default: return '#666';
-                      }
-                    })()
+                    backgroundColor: viewingTrade.status === 'active' ? '#e3f2fd' : 
+                                   viewingTrade.status === 'partial' ? '#fff3e0' : '#e8f5e8',
+                    color: viewingTrade.status === 'active' ? '#1976d2' : 
+                           viewingTrade.status === 'partial' ? '#f57c00' : '#388e3c'
                   }}>
-                    {viewingTrade.status === 'partial' ? 'Partially Sold' : viewingTrade.status}
+                    {viewingTrade.status === 'partial' ? 'Partially Sold' : 
+                     viewingTrade.status === 'active' ? 'Active' : 'Fully Sold'}
                   </span>
                 </div>
                 
-                {/* Profit/Loss Status */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', color: '#6c757d', fontWeight: '500' }}>Last Trade:</span>
+                  <span style={{ fontSize: '14px', color: '#6c757d', fontWeight: '500' }}>Partial Sales:</span>
                   <span style={{
-                    padding: '4px 12px',
+                    padding: '6px 12px',
                     borderRadius: '20px',
-                    fontSize: '12px',
+                    fontSize: '13px',
                     fontWeight: '600',
-                    backgroundColor: (() => {
-                      if (viewingTrade.unitsSold > 0 && viewingTrade.sellingPrice) {
-                        const totalReturn = (viewingTrade.unitsSold * viewingTrade.sellingPrice) - (viewingTrade.unitsSold * viewingTrade.purchaseRate);
-                        return totalReturn >= 0 ? '#e8f5e8' : '#ffebee';
-                      }
-                      return '#f5f5f5';
-                    })(),
-                    color: (() => {
-                      if (viewingTrade.unitsSold > 0 && viewingTrade.sellingPrice) {
-                        const totalReturn = (viewingTrade.unitsSold * viewingTrade.sellingPrice) - (viewingTrade.unitsSold * viewingTrade.purchaseRate);
-                        return totalReturn >= 0 ? '#388e3c' : '#d32f2f';
-                      }
-                      return '#666';
-                    })()
+                    backgroundColor: '#f8f9fa',
+                    color: '#495057'
                   }}>
-                    {(() => {
-                      if (viewingTrade.unitsSold > 0 && viewingTrade.sellingPrice) {
-                        const totalReturn = (viewingTrade.unitsSold * viewingTrade.sellingPrice) - (viewingTrade.unitsSold * viewingTrade.purchaseRate);
-                        return totalReturn >= 0 ? 'Profit' : 'Loss';
-                      }
-                      return 'No Sale';
-                    })()
-                    }
+                    {partialSales.length} transactions
                   </span>
                 </div>
               </div>
@@ -151,8 +207,8 @@ const TradeDetailsContent = ({ viewingTrade }) => {
         </div>
       </div>
 
-      {/* Purchase and Selling Details */}
-      <div className="col-md-6">
+      {/* Purchase Details */}
+      <div className="col-md-4">
         <div 
           style={{
             background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
@@ -166,95 +222,93 @@ const TradeDetailsContent = ({ viewingTrade }) => {
         >
           <div style={{
             background: 'rgba(255,255,255,0.15)',
-            padding: '18px 25px',
+            padding: '15px 20px',
             borderBottom: '1px solid rgba(255,255,255,0.2)'
           }}>
-            <h5 style={{ 
+            <h6 style={{ 
               color: 'white', 
               margin: '0', 
               fontWeight: '700',
-              fontSize: '16px',
+              fontSize: '15px',
               display: 'flex',
               alignItems: 'center'
             }}>
-              <i className="bi bi-cart-plus me-2" style={{ fontSize: '18px' }}></i>
+              <i className="bi bi-cart-plus me-2" style={{ fontSize: '16px' }}></i>
               Purchase Details
-            </h5>
+            </h6>
           </div>
           <div style={{
             background: 'white',
-            padding: '25px',
-            height: 'calc(100% - 60px)'
+            padding: '20px'
           }}>
-            <div style={{ marginBottom: '20px' }}>
+            <div style={{ marginBottom: '15px' }}>
               <div style={{ 
                 display: 'flex', 
                 justifyContent: 'space-between', 
                 alignItems: 'center',
-                padding: '12px 16px',
+                padding: '10px 14px',
                 background: '#f8f9fa',
-                borderRadius: '10px',
+                borderRadius: '8px',
                 border: '1px solid #e9ecef'
               }}>
-                <span style={{ color: '#6c757d', fontSize: '14px', fontWeight: '500' }}>Purchase Date</span>
-                <span style={{ color: '#2c3e50', fontSize: '15px', fontWeight: '600' }}>
+                <span style={{ color: '#6c757d', fontSize: '13px', fontWeight: '500' }}>Date</span>
+                <span style={{ color: '#2c3e50', fontSize: '14px', fontWeight: '600' }}>
                   {new Date(viewingTrade.purchaseDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                 </span>
               </div>
             </div>
-            <div style={{ marginBottom: '20px' }}>
+            <div style={{ marginBottom: '15px' }}>
               <div style={{ 
                 display: 'flex', 
                 justifyContent: 'space-between', 
                 alignItems: 'center',
-                padding: '12px 16px',
+                padding: '10px 14px',
                 background: '#f8f9fa',
-                borderRadius: '10px',
+                borderRadius: '8px',
                 border: '1px solid #e9ecef'
               }}>
-                <span style={{ color: '#6c757d', fontSize: '14px', fontWeight: '500' }}>Units Purchased</span>
-                <span style={{ color: '#2c3e50', fontSize: '15px', fontWeight: '600' }}>
+                <span style={{ color: '#6c757d', fontSize: '13px', fontWeight: '500' }}>Units</span>
+                <span style={{ color: '#2c3e50', fontSize: '14px', fontWeight: '600' }}>
                   {Math.round(viewingTrade.unitsPurchased)}
                 </span>
               </div>
             </div>
-            <div style={{ marginBottom: '20px' }}>
+            <div style={{ marginBottom: '15px' }}>
               <div style={{ 
                 display: 'flex', 
                 justifyContent: 'space-between', 
                 alignItems: 'center',
-                padding: '12px 16px',
+                padding: '10px 14px',
                 background: '#f8f9fa',
-                borderRadius: '10px',
+                borderRadius: '8px',
                 border: '1px solid #e9ecef'
               }}>
-                <span style={{ color: '#6c757d', fontSize: '14px', fontWeight: '500' }}>Purchase Rate</span>
-                <span style={{ color: '#2c3e50', fontSize: '15px', fontWeight: '600' }}>
+                <span style={{ color: '#6c757d', fontSize: '13px', fontWeight: '500' }}>Rate</span>
+                <span style={{ color: '#2c3e50', fontSize: '14px', fontWeight: '600' }}>
                   ₹{viewingTrade.purchaseRate.toFixed(2)}
                 </span>
               </div>
             </div>
-            <div style={{ marginBottom: '0' }}>
-              <div style={{ 
-                padding: '16px',
-                background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-                borderRadius: '12px',
-                textAlign: 'center',
-                boxShadow: '0 4px 15px rgba(79, 172, 254, 0.3)'
-              }}>
-                <div style={{ color: 'rgba(255,255,255,0.9)', fontSize: '13px', fontWeight: '500', marginBottom: '4px' }}>
-                  Total Investment
-                </div>
-                <div style={{ color: 'white', fontSize: '20px', fontWeight: '700' }}>
-                  ₹{(viewingTrade.unitsPurchased * viewingTrade.purchaseRate).toFixed(2)}
-                </div>
+            <div style={{ 
+              padding: '14px',
+              background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+              borderRadius: '10px',
+              textAlign: 'center',
+              boxShadow: '0 4px 15px rgba(79, 172, 254, 0.3)'
+            }}>
+              <div style={{ color: 'rgba(255,255,255,0.9)', fontSize: '12px', fontWeight: '500', marginBottom: '4px' }}>
+                Total Investment
+              </div>
+              <div style={{ color: 'white', fontSize: '18px', fontWeight: '700' }}>
+                ₹{(viewingTrade.unitsPurchased * viewingTrade.purchaseRate).toFixed(2)}
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="col-md-6">
+      {/* Sales Summary */}
+      <div className="col-md-4">
         <div 
           style={{
             background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)',
@@ -268,123 +322,421 @@ const TradeDetailsContent = ({ viewingTrade }) => {
         >
           <div style={{
             background: 'rgba(255,255,255,0.15)',
-            padding: '18px 25px',
+            padding: '15px 20px',
             borderBottom: '1px solid rgba(255,255,255,0.2)'
           }}>
-            <h5 style={{ 
+            <h6 style={{ 
               color: 'white', 
               margin: '0', 
               fontWeight: '700',
-              fontSize: '16px',
+              fontSize: '15px',
               display: 'flex',
               alignItems: 'center'
             }}>
-              <i className="bi bi-cart-dash me-2" style={{ fontSize: '18px' }}></i>
-              Selling Details
-            </h5>
+              <i className="bi bi-cart-dash me-2" style={{ fontSize: '16px' }}></i>
+              Sales Summary
+            </h6>
           </div>
           <div style={{
             background: 'white',
-            padding: '25px',
-            height: 'calc(100% - 60px)'
+            padding: '20px'
           }}>
-            {viewingTrade.sellingDate ? (
-              <>
-                <div style={{ marginBottom: '20px' }}>
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center',
-                    padding: '12px 16px',
-                    background: '#f8f9fa',
-                    borderRadius: '10px',
-                    border: '1px solid #e9ecef'
-                  }}>
-                    <span style={{ color: '#6c757d', fontSize: '14px', fontWeight: '500' }}>Selling Date</span>
-                    <span style={{ color: '#2c3e50', fontSize: '15px', fontWeight: '600' }}>
-                      {new Date(viewingTrade.sellingDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                    </span>
-                  </div>
-                </div>
-                <div style={{ marginBottom: '20px' }}>
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center',
-                    padding: '12px 16px',
-                    background: '#f8f9fa',
-                    borderRadius: '10px',
-                    border: '1px solid #e9ecef'
-                  }}>
-                    <span style={{ color: '#6c757d', fontSize: '14px', fontWeight: '500' }}>Units Sold</span>
-                    <span style={{ color: '#2c3e50', fontSize: '15px', fontWeight: '600' }}>
-                      {Math.round(viewingTrade.unitsSold) || 0}
-                    </span>
-                  </div>
-                </div>
-                <div style={{ marginBottom: '20px' }}>
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center',
-                    padding: '12px 16px',
-                    background: '#f8f9fa',
-                    borderRadius: '10px',
-                    border: '1px solid #e9ecef'
-                  }}>
-                    <span style={{ color: '#6c757d', fontSize: '14px', fontWeight: '500' }}>Selling Price</span>
-                    <span style={{ color: '#2c3e50', fontSize: '15px', fontWeight: '600' }}>
-                      ₹{(viewingTrade.sellingPrice || 0).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-                <div style={{ marginBottom: '0' }}>
-                  <div style={{ 
-                    padding: '16px',
-                    background: (() => {
-                      const totalReturn = (viewingTrade.unitsSold * viewingTrade.sellingPrice) - (viewingTrade.unitsPurchased * viewingTrade.purchaseRate);
-                      return totalReturn >= 0 
-                        ? 'linear-gradient(135deg, #2ecc71 0%, #27ae60 100%)'
-                        : 'linear-gradient(135deg, #e74c3c 0%, #c0392b 100%)';
-                    })(),
-                    borderRadius: '12px',
-                    textAlign: 'center',
-                    boxShadow: (() => {
-                      const totalReturn = (viewingTrade.unitsSold * viewingTrade.sellingPrice) - (viewingTrade.unitsPurchased * viewingTrade.purchaseRate);
-                      return totalReturn >= 0 
-                        ? '0 4px 15px rgba(46, 204, 113, 0.3)'
-                        : '0 4px 15px rgba(231, 76, 60, 0.3)';
-                    })()
-                  }}>
-                    <div style={{ color: 'rgba(255,255,255,0.9)', fontSize: '13px', fontWeight: '500', marginBottom: '4px' }}>
-                      Return
-                    </div>
-                    <div style={{ color: 'white', fontSize: '20px', fontWeight: '700' }}>
-                      {(() => {
-                        const totalReturn = (viewingTrade.unitsSold * viewingTrade.sellingPrice) - (viewingTrade.unitsPurchased * viewingTrade.purchaseRate);
-                        return totalReturn >= 0 
-                          ? `+₹${totalReturn.toFixed(2)}`
-                          : `-₹${Math.abs(totalReturn).toFixed(2)}`;
-                      })()} 
-                    </div>
-                  </div>
-                </div>
-              </>
-            ) : (
+            <div style={{ marginBottom: '15px' }}>
               <div style={{ 
-                textAlign: 'center', 
-                color: '#7f8c8d', 
-                fontSize: '16px',
-                fontStyle: 'italic',
-                padding: '40px 20px'
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                padding: '10px 14px',
+                background: '#f8f9fa',
+                borderRadius: '8px',
+                border: '1px solid #e9ecef'
               }}>
-                <i className="bi bi-hourglass-split" style={{ fontSize: '24px', marginBottom: '10px', display: 'block' }}></i>
-                Not sold yet
+                <span style={{ color: '#6c757d', fontSize: '13px', fontWeight: '500' }}>Units Sold</span>
+                <span style={{ color: '#2c3e50', fontSize: '14px', fontWeight: '600' }}>
+                  {Math.round(totalUnitsSold)}
+                </span>
               </div>
-            )}
+            </div>
+            <div style={{ marginBottom: '15px' }}>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                padding: '10px 14px',
+                background: '#f8f9fa',
+                borderRadius: '8px',
+                border: '1px solid #e9ecef'
+              }}>
+                <span style={{ color: '#6c757d', fontSize: '13px', fontWeight: '500' }}>Avg. Price</span>
+                <span style={{ color: '#2c3e50', fontSize: '14px', fontWeight: '600' }}>
+                  ₹{averageSellingPrice.toFixed(2)}
+                </span>
+              </div>
+            </div>
+            <div style={{ marginBottom: '15px' }}>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                padding: '10px 14px',
+                background: '#f8f9fa',
+                borderRadius: '8px',
+                border: '1px solid #e9ecef'
+              }}>
+                <span style={{ color: '#6c757d', fontSize: '13px', fontWeight: '500' }}>Remaining</span>
+                <span style={{ color: '#2c3e50', fontSize: '14px', fontWeight: '600' }}>
+                  {Math.round(remainingUnits)}
+                </span>
+              </div>
+            </div>
+            <div style={{ 
+              padding: '14px',
+              background: totalProfit >= 0 
+                ? 'linear-gradient(135deg, #2ecc71 0%, #27ae60 100%)'
+                : 'linear-gradient(135deg, #e74c3c 0%, #c0392b 100%)',
+              borderRadius: '10px',
+              textAlign: 'center',
+              boxShadow: totalProfit >= 0 
+                ? '0 4px 15px rgba(46, 204, 113, 0.3)'
+                : '0 4px 15px rgba(231, 76, 60, 0.3)'
+            }}>
+              <div style={{ color: 'rgba(255,255,255,0.9)', fontSize: '12px', fontWeight: '500', marginBottom: '4px' }}>
+                Total Return
+              </div>
+              <div style={{ color: 'white', fontSize: '18px', fontWeight: '700' }}>
+                {totalProfit >= 0 ? '+' : '-'}₹{Math.abs(totalProfit).toFixed(2)}
+              </div>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Performance Metrics */}
+      <div className="col-md-4">
+        <div 
+          style={{
+            background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+            borderRadius: '18px',
+            padding: '0',
+            boxShadow: '0 12px 30px rgba(168, 237, 234, 0.25)',
+            border: 'none',
+            height: '100%',
+            overflow: 'hidden'
+          }}
+        >
+          <div style={{
+            background: 'rgba(255,255,255,0.15)',
+            padding: '15px 20px',
+            borderBottom: '1px solid rgba(255,255,255,0.2)'
+          }}>
+            <h6 style={{ 
+              color: '#2c3e50', 
+              margin: '0', 
+              fontWeight: '700',
+              fontSize: '15px',
+              display: 'flex',
+              alignItems: 'center'
+            }}>
+              <i className="bi bi-bar-chart me-2" style={{ fontSize: '16px' }}></i>
+              Performance
+            </h6>
+          </div>
+          <div style={{
+            background: 'white',
+            padding: '20px'
+          }}>
+            <div style={{ marginBottom: '15px' }}>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                padding: '10px 14px',
+                background: '#f8f9fa',
+                borderRadius: '8px',
+                border: '1px solid #e9ecef'
+              }}>
+                <span style={{ color: '#6c757d', fontSize: '13px', fontWeight: '500' }}>Return %</span>
+                <span style={{ 
+                  color: totalProfit >= 0 ? '#27ae60' : '#e74c3c', 
+                  fontSize: '14px', 
+                  fontWeight: '600' 
+                }}>
+                  {totalCostOfSoldUnits > 0 ? 
+                    `${totalProfit >= 0 ? '+' : ''}${((totalProfit / totalCostOfSoldUnits) * 100).toFixed(2)}%` 
+                    : '0.00%'}
+                </span>
+              </div>
+            </div>
+            <div style={{ marginBottom: '15px' }}>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                padding: '10px 14px',
+                background: '#f8f9fa',
+                borderRadius: '8px',
+                border: '1px solid #e9ecef'
+              }}>
+                <span style={{ color: '#6c757d', fontSize: '13px', fontWeight: '500' }}>Sold %</span>
+                <span style={{ color: '#2c3e50', fontSize: '14px', fontWeight: '600' }}>
+                  {((totalUnitsSold / viewingTrade.unitsPurchased) * 100).toFixed(1)}%
+                </span>
+              </div>
+            </div>
+            <div style={{ marginBottom: '15px' }}>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                padding: '10px 14px',
+                background: '#f8f9fa',
+                borderRadius: '8px',
+                border: '1px solid #e9ecef'
+              }}>
+                <span style={{ color: '#6c757d', fontSize: '13px', fontWeight: '500' }}>Transactions</span>
+                <span style={{ color: '#2c3e50', fontSize: '14px', fontWeight: '600' }}>
+                  {partialSales.length}
+                </span>
+              </div>
+            </div>
+            <div style={{ 
+              padding: '14px',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              borderRadius: '10px',
+              textAlign: 'center',
+              boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)'
+            }}>
+              <div style={{ color: 'rgba(255,255,255,0.9)', fontSize: '12px', fontWeight: '500', marginBottom: '4px' }}>
+                Sale Amount
+              </div>
+              <div style={{ color: 'white', fontSize: '18px', fontWeight: '700' }}>
+                ₹{totalSaleAmount.toFixed(2)}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Detailed Partial Sales */}
+      {partialSales.length > 0 && (
+        <div className="col-12">
+          <div 
+            style={{
+              background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+              borderRadius: '18px',
+              padding: '0',
+              boxShadow: '0 12px 30px rgba(240, 147, 251, 0.25)',
+              border: 'none',
+              overflow: 'hidden'
+            }}
+          >
+            <div style={{
+              background: 'rgba(255,255,255,0.15)',
+              padding: '18px 25px',
+              borderBottom: '1px solid rgba(255,255,255,0.2)'
+            }}>
+              <h5 style={{ 
+                color: 'white', 
+                margin: '0', 
+                fontWeight: '700',
+                fontSize: '18px',
+                display: 'flex',
+                alignItems: 'center'
+              }}>
+                <i className="bi bi-list-ul me-2" style={{ fontSize: '20px' }}></i>
+                Detailed Sale Transactions ({partialSales.length})
+              </h5>
+            </div>
+            <div style={{
+              background: 'white',
+              padding: '25px'
+            }}>
+              <div style={{ 
+                maxHeight: '400px', 
+                overflowY: 'auto',
+                border: '1px solid #e9ecef',
+                borderRadius: '12px'
+              }}>
+                <Table hover responsive style={{ margin: '0' }}>
+                  <thead style={{ 
+                    background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
+                    position: 'sticky',
+                    top: '0',
+                    zIndex: 1
+                  }}>
+                    <tr>
+                      <th style={{ 
+                        border: 'none', 
+                        padding: '15px 20px', 
+                        fontSize: '14px', 
+                        fontWeight: '600',
+                        color: '#495057'
+                      }}>
+                        #
+                      </th>
+                      <th style={{ 
+                        border: 'none', 
+                        padding: '15px 20px', 
+                        fontSize: '14px', 
+                        fontWeight: '600',
+                        color: '#495057'
+                      }}>
+                        Sale Date
+                      </th>
+                      <th style={{ 
+                        border: 'none', 
+                        padding: '15px 20px', 
+                        fontSize: '14px', 
+                        fontWeight: '600',
+                        color: '#495057'
+                      }}>
+                        Units Sold
+                      </th>
+                      <th style={{ 
+                        border: 'none', 
+                        padding: '15px 20px', 
+                        fontSize: '14px', 
+                        fontWeight: '600',
+                        color: '#495057'
+                      }}>
+                        Sale Price
+                      </th>
+                      <th style={{ 
+                        border: 'none', 
+                        padding: '15px 20px', 
+                        fontSize: '14px', 
+                        fontWeight: '600',
+                        color: '#495057'
+                      }}>
+                        Sale Amount
+                      </th>
+                      <th style={{ 
+                        border: 'none', 
+                        padding: '15px 20px', 
+                        fontSize: '14px', 
+                        fontWeight: '600',
+                        color: '#495057'
+                      }}>
+                        Profit/Loss
+                      </th>
+                      <th style={{ 
+                        border: 'none', 
+                        padding: '15px 20px', 
+                        fontSize: '14px', 
+                        fontWeight: '600',
+                        color: '#495057'
+                      }}>
+                        Return %
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {partialSales.map((sale, index) => {
+                      const saleAmount = sale.unitsSold * sale.sellingPrice
+                      const costAmount = sale.unitsSold * viewingTrade.purchaseRate
+                      const profit = saleAmount - costAmount
+                      const returnPercentage = (profit / costAmount) * 100
+                      
+                      return (
+                        <tr key={index} style={{
+                          borderBottom: index === partialSales.length - 1 ? 'none' : '1px solid #f8f9fa'
+                        }}>
+                          <td style={{ 
+                            padding: '15px 20px', 
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            color: '#6c757d',
+                            border: 'none'
+                          }}>
+                            {index + 1}
+                          </td>
+                          <td style={{ 
+                            padding: '15px 20px', 
+                            fontSize: '14px',
+                            color: '#2c3e50',
+                            border: 'none'
+                          }}>
+                            {new Date(sale.sellingDate).toLocaleDateString('en-GB', { 
+                              day: '2-digit', 
+                              month: 'short', 
+                              year: 'numeric' 
+                            })}
+                          </td>
+                          <td style={{ 
+                            padding: '15px 20px', 
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            color: '#2c3e50',
+                            border: 'none'
+                          }}>
+                            {Math.round(sale.unitsSold)}
+                          </td>
+                          <td style={{ 
+                            padding: '15px 20px', 
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            color: '#2c3e50',
+                            border: 'none'
+                          }}>
+                            ₹{sale.sellingPrice.toFixed(2)}
+                          </td>
+                          <td style={{ 
+                            padding: '15px 20px', 
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            color: '#2c3e50',
+                            border: 'none'
+                          }}>
+                            ₹{saleAmount.toFixed(2)}
+                          </td>
+                          <td style={{ 
+                            padding: '15px 20px', 
+                            fontSize: '14px',
+                            fontWeight: '700',
+                            color: profit >= 0 ? '#27ae60' : '#e74c3c',
+                            border: 'none'
+                          }}>
+                            {profit >= 0 ? '+' : ''}₹{profit.toFixed(2)}
+                          </td>
+                          <td style={{ 
+                            padding: '15px 20px', 
+                            fontSize: '14px',
+                            fontWeight: '700',
+                            color: profit >= 0 ? '#27ae60' : '#e74c3c',
+                            border: 'none'
+                          }}>
+                            {profit >= 0 ? '+' : ''}{returnPercentage.toFixed(2)}%
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </Table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* No Sales Message */}
+      {partialSales.length === 0 && (
+        <div className="col-12">
+          <div style={{ 
+            textAlign: 'center', 
+            color: '#7f8c8d', 
+            fontSize: '16px',
+            fontStyle: 'italic',
+            padding: '40px 20px',
+            background: '#f8f9fa',
+            borderRadius: '15px',
+            border: '2px dashed #dee2e6'
+          }}>
+            <i className="bi bi-hourglass-split" style={{ fontSize: '32px', marginBottom: '15px', display: 'block' }}></i>
+            <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>No Sales Yet</div>
+            <div>This trade hasn't been sold yet. All {Math.round(viewingTrade.unitsPurchased)} units are still active.</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -470,13 +822,86 @@ export default function TradesManagement() {
     }
   }
 
+  // Function to prepare trades for display - now shows single record per trade
+  const prepareTradesForDisplay = (trades) => {
+    // Group trades by stock name and purchase date to handle partial sales
+    const groupedTrades = {}
+    
+    trades.forEach(trade => {
+      const key = `${trade.stockName}_${trade.purchaseDate}`
+      if (!groupedTrades[key]) {
+        groupedTrades[key] = {
+          purchaseTrade: null,
+          partialSales: []
+        }
+      }
+      
+      // Find the original purchase trade (the one with the earliest date or no selling date)
+      if (!trade.sellingDate || (groupedTrades[key].purchaseTrade && new Date(trade.purchaseDate) < new Date(groupedTrades[key].purchaseTrade.purchaseDate))) {
+        if (!groupedTrades[key].purchaseTrade) {
+          groupedTrades[key].purchaseTrade = trade
+        }
+      }
+      
+      // Add to partial sales if it has a selling date
+      if (trade.sellingDate && trade.unitsSold > 0) {
+        groupedTrades[key].partialSales.push(trade)
+      }
+    })
+    
+    // Convert grouped trades back to display format
+    return Object.values(groupedTrades).map(group => {
+      const baseTrade = group.purchaseTrade || group.partialSales[0] // Fallback if no clear purchase trade
+      let displayInfo = {
+        ...baseTrade,
+        displayType: 'single_record',
+        originalTrade: baseTrade
+      }
+
+      if (group.partialSales.length > 0) {
+        // Calculate totals for partial sales
+        const totalUnitsSold = group.partialSales.reduce((sum, sale) => sum + sale.unitsSold, 0)
+        const totalSaleAmount = group.partialSales.reduce((sum, sale) => sum + (sale.unitsSold * sale.sellingPrice), 0)
+        const totalCostOfSoldUnits = group.partialSales.reduce((sum, sale) => sum + (sale.unitsSold * baseTrade.purchaseRate), 0)
+        const averageSellingPrice = totalUnitsSold > 0 ? totalSaleAmount / totalUnitsSold : 0
+        const totalProfit = totalSaleAmount - totalCostOfSoldUnits
+        
+        // Use the most recent sale date for display
+        const latestSaleDate = group.partialSales.reduce((latest, sale) => {
+          return new Date(sale.sellingDate) > new Date(latest) ? sale.sellingDate : latest
+        }, group.partialSales[0].sellingDate)
+
+        // Determine status
+        const remainingUnits = baseTrade.unitsPurchased - totalUnitsSold
+        const status = remainingUnits <= 0 ? 'sold' : (totalUnitsSold > 0 ? 'partial' : 'active')
+
+        displayInfo = {
+          ...displayInfo,
+          // Summary information for table display
+          unitsSold: totalUnitsSold,
+          sellingPrice: averageSellingPrice,
+          sellingDate: latestSaleDate,
+          partialSalesCount: group.partialSales.length,
+          profitLoss: totalProfit,
+          profitLossPercentage: totalCostOfSoldUnits > 0 ? ((totalProfit / totalCostOfSoldUnits) * 100) : 0,
+          status: status,
+          remainingUnits: remainingUnits
+        }
+      }
+
+      return displayInfo
+    })
+  }
+
   // Pagination helper functions
   const getFilteredTrades = () => {
-    return trades
+    const filteredTrades = trades
       .filter(trade => 
         trade.stockName.toLowerCase().includes(searchTerm.toLowerCase())
       )
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    
+    return prepareTradesForDisplay(filteredTrades)
   }
 
   const getPaginatedTrades = () => {
@@ -902,41 +1327,44 @@ export default function TradesManagement() {
                             </tr>
                           ) : (
                             getPaginatedTrades().map((trade, index) => {
-                              // Calculate return (profit/loss)
+                              // Calculate return (profit/loss) for single record display
                               const calculateReturn = () => {
-                                if (!trade.sellingPrice || !trade.unitsSold) {
-                                  return { amount: 0, isProfit: null };
+                                if (trade.status === 'active') {
+                                  // For active trades, no profit/loss yet
+                                  return { amount: 0, isProfit: null, percentage: 0 };
+                                } else {
+                                  // Use the calculated profit/loss from the trade
+                                  const returnAmount = trade.profitLoss || 0;
+                                  return {
+                                    amount: returnAmount,
+                                    isProfit: returnAmount > 0,
+                                    percentage: trade.profitLossPercentage || 0
+                                  };
                                 }
-                                const purchaseCost = trade.unitsSold * trade.purchaseRate;
-                                const sellingAmount = trade.unitsSold * trade.sellingPrice;
-                                const returnAmount = sellingAmount - purchaseCost;
-                                return {
-                                  amount: returnAmount,
-                                  isProfit: returnAmount > 0
-                                };
                               };
                               
                               const returnData = calculateReturn();
                               
+                              // Standard row styling for single record display
+                              const rowStyle = {
+                                background: index % 2 === 0 
+                                  ? 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)' 
+                                  : 'linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)',
+                                borderBottom: '1px solid #e9ecef',
+                                transition: 'all 0.3s ease'
+                              };
+                              
                               return (
                               <tr 
-                                key={trade._id}
-                                style={{
-                                  background: index % 2 === 0 
-                                    ? 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)' 
-                                    : 'linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)',
-                                  borderBottom: '1px solid #e9ecef',
-                                  transition: 'all 0.3s ease'
-                                }}
+                                key={`${trade._id}_${index}`}
+                                style={rowStyle}
                                 onMouseEnter={(e) => {
                                   e.currentTarget.style.background = 'linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%)';
                                   e.currentTarget.style.transform = 'translateY(-1px)';
                                   e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
                                 }}
                                 onMouseLeave={(e) => {
-                                  e.currentTarget.style.background = index % 2 === 0 
-                                    ? 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)' 
-                                    : 'linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)';
+                                  e.currentTarget.style.background = rowStyle.background;
                                   e.currentTarget.style.transform = 'translateY(0)';
                                   e.currentTarget.style.boxShadow = 'none';
                                 }}
@@ -950,12 +1378,24 @@ export default function TradesManagement() {
                                   borderRight: '1px solid #f1f3f4',
                                   textAlign: 'center'
                                 }}>
-                                  <StockDisplay 
-                                    stockName={trade.stockName}
-                                    stockSymbol={stockSymbols[trade.stockName]}
-                                    size="sm"
-                                    showName={true}
-                                  />
+                                  <div>
+                                    <StockDisplay 
+                                      stockName={trade.stockName}
+                                      stockSymbol={stockSymbols[trade.stockName]}
+                                      size="sm"
+                                      showName={true}
+                                    />
+                                    {trade.partialSalesCount && trade.partialSalesCount > 0 && (
+                                      <div style={{
+                                        fontSize: '11px',
+                                        color: '#6c757d',
+                                        marginTop: '4px',
+                                        fontWeight: '500'
+                                      }}>
+                                        {trade.partialSalesCount} partial sale{trade.partialSalesCount > 1 ? 's' : ''}
+                                      </div>
+                                    )}
+                                  </div>
                                 </td>
                                 <td style={{ 
                                   border: 'none', 
@@ -985,7 +1425,15 @@ export default function TradesManagement() {
                                   borderRight: '1px solid #f1f3f4',
                                   textAlign: 'center'
                                 }}>
-                                  {trade.sellingDate && trade.unitsSold ? (
+                                  {trade.status === 'active' ? (
+                                    <div style={{
+                                      fontSize: '13px',
+                                      color: '#6c757d',
+                                      fontStyle: 'italic'
+                                    }}>
+                                      Active Trade
+                                    </div>
+                                  ) : returnData.amount !== 0 ? (
                                     <div>
                                       <div style={{
                                         fontSize: '14px',
@@ -1000,7 +1448,7 @@ export default function TradesManagement() {
                                         color: returnData.isProfit ? '#28a745' : '#dc3545',
                                         fontWeight: '500'
                                       }}>
-                                        ({returnData.isProfit ? '+' : ''}{((returnData.amount / (trade.unitsSold * trade.purchaseRate)) * 100).toFixed(2)}%)
+                                        ({returnData.isProfit ? '+' : ''}{returnData.percentage.toFixed(2)}%)
                                       </div>
                                     </div>
                                   ) : (
@@ -1009,7 +1457,7 @@ export default function TradesManagement() {
                                       color: '#6c757d',
                                       fontStyle: 'italic'
                                     }}>
-                                      Active Trade
+                                      No Change
                                     </div>
                                   )}
                                 </td>
@@ -1019,7 +1467,37 @@ export default function TradesManagement() {
                                    textAlign: 'center',
                                    borderRight: '1px solid #f1f3f4'
                                  }}>
-                                   {trade.sellingDate && trade.unitsSold ? (
+                                   {trade.displayType === 'active_remaining' ? (
+                                     <span style={{
+                                       padding: '6px 12px',
+                                       background: '#fff3cd',
+                                       borderRadius: '20px',
+                                       display: 'inline-block',
+                                       color: '#856404',
+                                       fontSize: '12px',
+                                       fontWeight: '600',
+                                       textTransform: 'uppercase',
+                                       letterSpacing: '0.5px',
+                                       border: '1px solid #ffeaa7'
+                                     }}>
+                                       Active
+                                     </span>
+                                   ) : trade.displayType === 'summary' ? (
+                                     <span style={{
+                                       padding: '6px 12px',
+                                       background: '#e2e3e5',
+                                       borderRadius: '20px',
+                                       display: 'inline-block',
+                                       color: '#383d41',
+                                       fontSize: '12px',
+                                       fontWeight: '600',
+                                       textTransform: 'uppercase',
+                                       letterSpacing: '0.5px',
+                                       border: '1px solid #d6d8db'
+                                     }}>
+                                       Completed
+                                     </span>
+                                   ) : returnData.amount !== 0 ? (
                                      <span style={{
                                        padding: '6px 12px',
                                        background: returnData.isProfit ? '#d4edda' : '#f8d7da',
@@ -1037,17 +1515,17 @@ export default function TradesManagement() {
                                    ) : (
                                      <span style={{
                                        padding: '6px 12px',
-                                       background: '#fff3cd',
+                                       background: '#f8f9fa',
                                        borderRadius: '20px',
                                        display: 'inline-block',
-                                       color: '#856404',
+                                       color: '#6c757d',
                                        fontSize: '12px',
                                        fontWeight: '600',
                                        textTransform: 'uppercase',
                                        letterSpacing: '0.5px',
-                                       border: '1px solid #ffeaa7'
+                                       border: '1px solid #dee2e6'
                                      }}>
-                                       Active
+                                       Break Even
                                      </span>
                                    )}
                                  </td>
@@ -1069,7 +1547,10 @@ export default function TradesManagement() {
                                         }}
                                         size="sm"
                                         onClick={() => {
-                                          setViewingTrade(trade)
+                                          const tradeToView = trade.originalTrade || trade;
+                                          console.log('🔍 Eye button clicked - Trade data:', tradeToView);
+                                          console.log('🔍 Trade partialSales:', tradeToView.partialSales);
+                                          setViewingTrade(tradeToView)
                                           setShowViewModal(true)
                                         }}
                                         onMouseEnter={(e) => {
