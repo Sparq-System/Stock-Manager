@@ -43,6 +43,7 @@ export default function AdminDashboard() {
     totalInvestment: 0,
     totalUnits: 0,
     totalValuation: 0,
+    totalProfitLoss: 0,
     avgReturn: 0
   })
   const [chartData, setChartData] = useState({
@@ -157,6 +158,7 @@ export default function AdminDashboard() {
         const portfolioValue = totalUnits * currentNAV
         const totalInvestment = portfolioData.data?.totalInvestment || 0
         const totalValuation = totalUnits * currentNAV
+        const totalProfitLoss = portfolioData.data?.totalProfitLoss || 0
         
         const avgReturn = trades.length > 0 ? (totalProfit / totalVolume) * 100 : 0
 
@@ -170,6 +172,7 @@ export default function AdminDashboard() {
           totalInvestment,
           totalUnits,
           totalValuation,
+          totalProfitLoss,
           avgReturn
         })
       } else {
@@ -638,7 +641,7 @@ export default function AdminDashboard() {
                       <div 
                         className="rounded-4 p-3 me-3"
                         style={{
-                          background: (stats.totalValuation - stats.totalInvestment) >= 0 
+                          background: stats.totalProfitLoss >= 0 
                             ? 'linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%)'
                             : 'linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%)',
                           width: '60px',
@@ -648,12 +651,12 @@ export default function AdminDashboard() {
                           justifyContent: 'center'
                         }}
                       >
-                        <i className={`bi ${(stats.totalValuation - stats.totalInvestment) >= 0 ? 'bi-arrow-up-circle' : 'bi-arrow-down-circle'} text-white fs-3`}></i>
+                        <i className={`bi ${stats.totalProfitLoss >= 0 ? 'bi-arrow-up-circle' : 'bi-arrow-down-circle'} text-white fs-3`}></i>
                       </div>
                       <div style={{ whiteSpace: 'nowrap', overflow: 'hidden' }}>
                         <h6 className="text-muted mb-1 fw-medium">Profit & Loss</h6>
-                        <h2 className="mb-0 fw-bold text-truncate" style={{ color: (stats.totalValuation - stats.totalInvestment) >= 0 ? '#28a745' : '#dc3545', fontSize: 'clamp(1.2rem, 2.5vw, 1.75rem)' }}>₹{(stats.totalValuation - stats.totalInvestment).toLocaleString()}</h2>
-                        <small className={(stats.totalValuation - stats.totalInvestment) >= 0 ? 'text-success' : 'text-danger'}>Total Valuation - Total Investment</small>
+                        <h2 className="mb-0 fw-bold text-truncate" style={{ color: stats.totalProfitLoss >= 0 ? '#28a745' : '#dc3545', fontSize: 'clamp(1.2rem, 2.5vw, 1.75rem)' }}>₹{stats.totalProfitLoss.toLocaleString()}</h2>
+                        <small className={stats.totalProfitLoss >= 0 ? 'text-success' : 'text-danger'}>Realized Profit/Loss</small>
                       </div>
                     </div>
                   </Card.Body>
