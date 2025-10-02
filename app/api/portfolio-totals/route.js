@@ -59,6 +59,7 @@ export async function GET(request) {
         totalProfitLoss, // Add profit/loss as separate field
         totalInvestmentWithProfitLoss: (portfolioTotals.totalInvestment || 0) + totalProfitLoss, // Include profit/loss as separate field
         lastUpdated: portfolioTotals.updatedAt
+        // comment line
       }
     })
 
