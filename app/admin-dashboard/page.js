@@ -158,7 +158,7 @@ export default function AdminDashboard() {
         const portfolioValue = totalUnits * currentNAV
         const totalInvestment = portfolioData.data?.totalInvestment || 0
         const totalValuation = totalUnits * currentNAV
-        const totalProfitLoss = portfolioData.data?.totalProfitLoss || 0
+        const totalProfitLoss = totalValuation - totalInvestment
         
         const avgReturn = trades.length > 0 ? (totalProfit / totalVolume) * 100 : 0
 
