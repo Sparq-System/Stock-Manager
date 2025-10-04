@@ -21,7 +21,6 @@ function verifyToken(request) {
   }
 }
 
-// GET - Fetch all active holdings
 export async function GET(request) {
   try {
     await dbConnect()
@@ -36,20 +35,38 @@ export async function GET(request) {
       return NextResponse.json({ message: 'User not found' }, { status: 404 })
     }
 
+    // Check if we should fetch all holdings (including sold ones)
+    const url = new URL(request.url)
+    const fetchAll = url.searchParams.get('all') === 'true'
+
     let holdings
     if (user.role === 'admin') {
-      // Fetch all active holdings for admin users
-      holdings = await Holding.find({
-        remainingUnits: { $gt: 0 },
-        status: 'active'
-      }).populate('userId', 'firstName lastName email userCode').sort({ lastTransactionDate: -1 })
+      if (fetchAll) {
+        // Fetch all holdings (active, partial, and sold) for admin users
+        holdings = await Holding.find({})
+          .populate('userId', 'firstName lastName email userCode')
+          .sort({ lastTransactionDate: -1 })
+      } else {
+        // Fetch only active holdings for admin users
+        holdings = await Holding.find({
+          remainingUnits: { $gt: 0 },
+          status: 'active'
+        }).populate('userId', 'firstName lastName email userCode').sort({ lastTransactionDate: -1 })
+      }
     } else {
-      // Fetch only current user's holdings for client users
-      holdings = await Holding.find({
-        userId: decoded.userId,
-        remainingUnits: { $gt: 0 },
-        status: 'active'
-      }).populate('userId', 'firstName lastName email userCode').sort({ lastTransactionDate: -1 })
+      if (fetchAll) {
+        // Fetch all holdings for current user
+        holdings = await Holding.find({
+          userId: decoded.userId
+        }).populate('userId', 'firstName lastName email userCode').sort({ lastTransactionDate: -1 })
+      } else {
+        // Fetch only current user's active holdings
+        holdings = await Holding.find({
+          userId: decoded.userId,
+          remainingUnits: { $gt: 0 },
+          status: 'active'
+        }).populate('userId', 'firstName lastName email userCode').sort({ lastTransactionDate: -1 })
+      }
     }
 
     // Format holdings data for frontend
