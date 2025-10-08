@@ -182,6 +182,18 @@ export async function POST(request) {
           const costBasis = trade.purchaseRate * unitsToSellFromThisTrade
           const saleProceeds = parseFloat(sellingPrice) * unitsToSellFromThisTrade
           const profitLoss = saleProceeds - costBasis
+          const profitLossPercentage = (profitLoss / costBasis) * 100
+          
+          // Add this partial sale to the partialSales array
+          const transactionId = `SALE_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
+          trade.partialSales.push({
+            unitsSold: unitsToSellFromThisTrade,
+            sellingPrice: parseFloat(sellingPrice),
+            sellingDate: new Date(sellingDate),
+            profitLoss: profitLoss,
+            profitLossPercentage: profitLossPercentage,
+            transactionId: transactionId
+          })
           
           // Update cumulative partial profit/loss
           trade.partialProfitLoss = (trade.partialProfitLoss || 0) + profitLoss

@@ -45,6 +45,33 @@ const TradeSchema = new mongoose.Schema({
     default: null,
     comment: 'Final profit/loss when trade is fully closed'
   },
+  // Array to track individual partial sale transactions
+  partialSales: [{
+    unitsSold: {
+      type: Number,
+      required: true
+    },
+    sellingPrice: {
+      type: Number,
+      required: true
+    },
+    sellingDate: {
+      type: Date,
+      required: true
+    },
+    profitLoss: {
+      type: Number,
+      required: true
+    },
+    profitLossPercentage: {
+      type: Number,
+      required: true
+    },
+    transactionId: {
+      type: String,
+      required: true
+    }
+  }],
   status: {
     type: String,
     enum: ['active', 'sold', 'partial'],

@@ -375,14 +375,14 @@ export default function BuySellPage() {
     setTimeout(() => setAlert({ show: false, message: '', type: 'success' }), 5000)
   }
 
-  // Calculate if trade amount exceeds total investment
+  // Calculate if trade amount exceeds total valuation
   const isTradeAmountValid = () => {
     const purchaseRate = parseFloat(addTradeFormData.purchaseRate) || 0
     const unitsPurchased = parseInt(addTradeFormData.unitsPurchased) || 0
     const tradeAmount = purchaseRate * unitsPurchased
     
     if (tradeAmount === 0) return true // Allow empty form
-    return tradeAmount <= portfolioTotals.totalInvestment
+    return tradeAmount <= currentValue
   }
 
   const handleAddTradeSubmit = async (e) => {
@@ -393,14 +393,14 @@ export default function BuySellPage() {
       // Calculate trade amount
       const tradeAmount = parseFloat(addTradeFormData.purchaseRate) * parseInt(addTradeFormData.unitsPurchased)
       
-      // Validate against total investment
-      if (tradeAmount > portfolioTotals.totalInvestment) {
-        showAlert(`Trade amount ₹${tradeAmount.toLocaleString()} exceeds total investment ₹${portfolioTotals.totalInvestment.toLocaleString()}`, 'danger')
+      // Validate against total valuation
+      if (tradeAmount > currentValue) {
+        showAlert(`Trade amount ₹${tradeAmount.toLocaleString()} exceeds total valuation ₹${currentValue.toLocaleString()}`, 'danger')
         return
       }
       
-      // Calculate remaining balance: Total Investment - Amount invested in trades
-      const remainingBalance = portfolioTotals.totalInvestment - investmentData.investedInTrades
+      // Calculate remaining balance: Total Valuation - Amount invested in trades
+      const remainingBalance = currentValue - investmentData.investedInTrades
       
       // Validate against remaining balance
       if (tradeAmount > remainingBalance) {

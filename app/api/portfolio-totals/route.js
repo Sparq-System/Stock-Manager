@@ -55,9 +55,11 @@ export async function GET(request) {
       success: true,
       data: {
         totalUnits: portfolioTotals.totalUnits || 0,
-        totalInvestment: (portfolioTotals.totalInvestment || 0) + totalProfitLoss, // Include profit/loss
+        totalInvestment: portfolioTotals.totalInvestment || 0, // Return raw investment value from database
         totalProfitLoss, // Add profit/loss as separate field
+        totalInvestmentWithProfitLoss: (portfolioTotals.totalInvestment || 0) + totalProfitLoss, // Include profit/loss as separate field
         lastUpdated: portfolioTotals.updatedAt
+        // comment line
       }
     })
 
